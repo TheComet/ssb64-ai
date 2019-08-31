@@ -1,0 +1,4 @@
+/build*
+*.kdev4
+mupen64plus-ui-console
+*_obj*

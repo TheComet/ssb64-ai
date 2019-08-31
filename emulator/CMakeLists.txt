@@ -2,14 +2,75 @@ cmake_minimum_required (VERSION 3.12)
 
 project ("Super Smash Bros. AI")
 
-###############################################################################
-# Mupen64plus core library
-###############################################################################
+if (NOT DEFINED CMAKE_BUILD_TYPE)
+    set (CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
+endif ()
 
 ###############################################################################
+# Build all mupen libs
 ###############################################################################
+
+function (build_mupen_component NAME)
+    set (ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
+    file (GLOB_RECURSE SOURCES "${ROOT_DIR}/src/*.c" "${ROOT_DIR}/src/*.cpp")
+    file (GLOB_RECURSE HEADERS "${ROOT_DIR}/src/*.h" "${ROOT_DIR}/src/*.hpp")
+
+    if (NAME MATCHES "mupen64plus-core")
+        set (LIBNAME "${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2")
+    else ()
+        set (LIBNAME "${NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    endif ()
+
+    if (UNIX)
+        set (OUTPUT_LIB_FILE "${ROOT_DIR}/projects/unix/${LIBNAME}")
+        add_custom_command (OUTPUT ${OUTPUT_LIB_FILE}
+            COMMAND make ARGS all -j
+            WORKING_DIRECTORY "${ROOT_DIR}/projects/unix"
+            DEPENDS ${SOURCES} ${HEADERS}
+            COMMENT "Building ${NAME} library"
+            VERBATIM)
+        add_custom_target (${NAME} DEPENDS ${OUTPUT_LIB_FILE})
+    else ()
+        message (FATAL_ERROR "Windows is currently not supported")
+    endif ()
+endfunction ()
+
+set (MUPEN_COMPONENTS
+    mupen64plus-core
+    #mupen64plus-ai
+    mupen64plus-audio-sdl
+    mupen64plus-input-sdl
+    mupen64plus-rsp-cxd4
+    mupen64plus-video-glide64mk2)
+
+foreach (COMPONENT ${MUPEN_COMPONENTS})
+    message (STATUS ${COMPONENT})
+    build_mupen_component (${COMPONENT})
+endforeach ()
+
+###############################################################################
+# Mupen64plus core library is linked to the python library and needs to be
+# importable
+###############################################################################
+
+add_library (mupen64plus SHARED IMPORTED)
+set_property (TARGET mupen64plus PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/projects/unix/${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2")
+target_include_directories (mupen64plus INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
+add_dependencies (mupen64plus ${MUPEN_COMPONENTS})
 
 ###############################################################################
 # Python bindings
 ###############################################################################
 
+add_library (m64py SHARED
+    "m64py/src/m64py.c"
+    "m64py/src/m64py_ssb64.c")
+
+set_target_properties (m64py PROPERTIES
+    PREFIX ""
+    DBG_POSTFIX ""
+    OUTPUT_NAME "m64py")
+
+find_package (Python COMPONENTS Development REQUIRED)
+target_link_libraries (m64py PRIVATE Python::Python)
+target_link_libraries (m64py PRIVATE mupen64plus)
