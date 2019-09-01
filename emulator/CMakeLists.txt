@@ -64,7 +64,10 @@ add_dependencies (mupen64plus ${MUPEN_COMPONENTS})
 
 add_library (m64py SHARED
     "m64py/src/m64py.c"
-    "m64py/src/m64py_ssb64.c")
+    "m64py/src/m64py_type_Emulator.c"
+    "m64py/src/m64py_type_SSB64.c")
+
+target_include_directories (m64py PRIVATE "m64py/include")
 
 set_target_properties (m64py PROPERTIES
     PREFIX ""
