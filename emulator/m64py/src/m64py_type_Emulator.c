@@ -51,70 +51,83 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_input_plugin(PyObject* m, PyObject* args)
+set_input_plugin(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_audio_plugin(PyObject* m, PyObject* args)
+set_audio_plugin(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_video_plugin(PyObject* m, PyObject* args)
+set_video_plugin(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_rsp_plugin(PyObject* m, PyObject* args)
+set_rsp_plugin(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_ai_plugin(PyObject* m, PyObject* args)
+load_ai_plugin(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-load_ssb64_rom(PyObject* m, PyObject* args)
+load_ssb64_rom(PyObject* self, PyObject* args)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-unload_rom(PyObject* m, PyObject* arg)
+unload_rom(PyObject* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-advance_frame(PyObject* m, PyObject* args)
+advance_frame(PyObject* self, PyObject* args)
+{
+    if (CoreDoCommand(M64CMD_ADVANCE_FRAME, 0, NULL) != M64ERR_SUCCESS)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to advance frame: Emulator is in an invalid state");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+run_macro(PyObject* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"set_input_plugin", set_input_plugin, METH_O, ""},
-    {"set_audio_plugin", set_audio_plugin, METH_O, ""},
-    {"set_video_plugin", set_video_plugin, METH_O, ""},
-    {"set_rsp_plugin",   set_rsp_plugin,   METH_O, ""},
-    {"set_ai_plugin",    set_ai_plugin,    METH_O, ""},
-    {"load_ssb64_rom",   load_ssb64_rom,   METH_O, ""},
-    {"unload_rom",       unload_rom,       METH_NOARGS, ""},
-    {"advance_frame",    advance_frame,    METH_NOARGS, ""},
+    {"set_input_plugin",  set_input_plugin, METH_O, ""},
+    {"set_audio_plugin",  set_audio_plugin, METH_O, ""},
+    {"set_video_plugin",  set_video_plugin, METH_O, ""},
+    {"set_rsp_plugin",    set_rsp_plugin,   METH_O, ""},
+    {"load_ssb64_rom",    load_ssb64_rom,    METH_O, ""},
+    {"unload_rom",        unload_rom,        METH_NOARGS, ""},
+    {"advance_frame",     advance_frame,     METH_NOARGS, ""},
+    {"run_macro",         run_macro,         METH_O, ""},
     {NULL}
 };
 

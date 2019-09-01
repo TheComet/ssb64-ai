@@ -1,5 +1,6 @@
 #include "Python.h"
 #include "m64py_type_Emulator.h"
+#include "m64py_type_SSB64.h"
 
 /* ------------------------------------------------------------------------- */
 static void
@@ -12,6 +13,7 @@ static int
 init_builtin_types(void)
 {
     if (m64py_EmulatorType_init() != 0) return -1;
+    if (m64py_SSB64Type_init() != 0)    return -1;
     return 0;
 }
 
@@ -20,6 +22,7 @@ static int
 add_builtin_types_to_module(PyObject* m)
 {
     Py_INCREF(&m64py_EmulatorType); if (PyModule_AddObject(m, "Emulator", (PyObject*)&m64py_EmulatorType) != 0) return -1;
+    Py_INCREF(&m64py_SSB64Type);    if (PyModule_AddObject(m, "SSB64", (PyObject*)&m64py_SSB64Type) != 0) return -1;
     return 0;
 }
 
