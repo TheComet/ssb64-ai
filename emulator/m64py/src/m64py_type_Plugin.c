@@ -8,7 +8,6 @@
 static void
 Plugin_dealloc(m64py_Plugin* self)
 {
-    self->PluginShutdown();
     osal_dynlib_close(self->handle);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -68,7 +67,7 @@ m64py_PluginType_init(void)
 
 /* ------------------------------------------------------------------------- */
 m64py_Plugin*
-m64py_Plugin_load(m64py_Emulator* emu, const char* path_to_plugin, m64p_plugin_type type)
+m64py_Plugin_load(const char* path_to_plugin, m64p_plugin_type type, m64p_dynlib_handle corelib_handle)
 {
     m64p_plugin_type PluginType = (m64p_plugin_type)0;
     int PluginVersion = 0;
@@ -96,25 +95,18 @@ m64py_Plugin_load(m64py_Emulator* emu, const char* path_to_plugin, m64p_plugin_t
     M64PY_PLUGIN_FUNCTIONS
 #undef X
 
-    plugin->PluginGetVersion(&PluginType, &PluginVersion, NULL, &PluginName, NULL);
+    plugin->PluginGetVersion(&PluginType, &PluginVersion, NULL, &plugin->name, NULL);
     if (PluginType != type)
     {
         PyErr_Format(PyExc_RuntimeError, "Shared library \"%s\" is of type %d, but we expected %d instead.", path_to_plugin, PluginType, type);
-        goto start_lib_failed;
+        goto version_mismatch;
     }
 
     /* the front-end doesn't talk to the plugins, so we don't care about the plugin version or api version */
 
-    /* call the plugin's initialization function and make sure it starts okay */
-    if (plugin->PluginStartup(emu->corelib.handle, NULL, NULL) != M64ERR_SUCCESS)
-    {
-        PyErr_Format(PyExc_RuntimeError, "Shared library \"%s\" failed to start.", path_to_plugin);
-        goto start_lib_failed;
-    }
-
     return plugin;
 
-    start_lib_failed      :
+    version_mismatch      :
     load_functions_failed : osal_dynlib_close(plugin->handle);
     open_lib_failed       : Py_DECREF(plugin);
     alloc_plugin_failed   : return NULL;

@@ -38,4 +38,10 @@ extern PyTypeObject m64py_EmulatorType;
 int
 m64py_EmulatorType_init(void);
 
+int
+m64py_Emulator_start_plugins(m64py_Emulator* self);
+
+void
+m64py_Emulator_stop_plugins(m64py_Emulator* self);
+
 #endif /* M64PY_TYPE_EMULATOR_H */

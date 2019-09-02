@@ -98,9 +98,18 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-load_ssb64_rom(PyObject* self, PyObject* args)
+load_ssb64_rom(m64py_Emulator* self, PyObject* arg)
 {
-    return PyObject_CallObject((PyObject*)&m64py_SSB64Type, NULL);
+    /* Prepend emulator instance as first argument for SSB64 constructor */
+    PyObject* args = PyTuple_New(2);
+    if (args == NULL)
+        return NULL;
+    Py_INCREF(self); PyTuple_SET_ITEM(args, 0, (PyObject*)self);
+    Py_INCREF(arg);  PyTuple_SET_ITEM(args, 1, arg);
+
+    m64py_SSB64* game = (m64py_SSB64*)PyObject_CallObject((PyObject*)&m64py_SSB64Type, args);
+    Py_DECREF(args);
+    return (PyObject*)game;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -114,7 +123,8 @@ unload_rom(PyObject* self, PyObject* arg)
 static PyObject*
 advance_frame(m64py_Emulator* self, PyObject* args)
 {
-    if (self->corelib.CoreDoCommand(M64CMD_ADVANCE_FRAME, 0, NULL) != M64ERR_SUCCESS)
+    /*if (self->corelib.CoreDoCommand(M64CMD_ADVANCE_FRAME, 0, NULL) != M64ERR_SUCCESS)*/
+    if (self->corelib.CoreDoCommand(M64CMD_EXECUTE, 0, NULL) != M64ERR_SUCCESS)
     {
         PyErr_SetString(PyExc_RuntimeError, "Failed to advance frame: Emulator is in an invalid state");
         return NULL;
@@ -132,10 +142,10 @@ run_macro(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"load_ssb64_rom",  load_ssb64_rom,   METH_VARARGS, ""},
-    {"unload_rom",      unload_rom,       METH_NOARGS, ""},
-    {"advance_frame",   (PyCFunction)advance_frame,    METH_NOARGS, ""},
-    {"run_macro",       run_macro,        METH_O, ""},
+    {"load_ssb64_rom",  (PyCFunction)load_ssb64_rom, METH_O, ""},
+    {"unload_rom",      (PyCFunction)unload_rom,     METH_NOARGS, ""},
+    {"advance_frame",   (PyCFunction)advance_frame,  METH_NOARGS, ""},
+    {"run_macro",       (PyCFunction)run_macro,      METH_O, ""},
     {NULL}
 };
 
@@ -163,20 +173,33 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
 
     if (PyUnicode_Check(value))
     {
+        m64p_error result;
         m64py_Plugin* new_plugin;
+        const char* filepath;
+
+        /* A path to the plugin shared lib was specified. Get path as ASCII
+         * string */
         PyObject* bytes = PyUnicode_AsASCIIString(value);
         if (bytes == NULL)
-            return -1;
+            goto convert_to_ascii_failed;
+        filepath = PyBytes_AS_STRING(bytes);
 
-        const char* filepath = PyBytes_AS_STRING(bytes);
-        new_plugin = m64py_Plugin_load(self, filepath, plugin_type);
-        Py_DECREF(bytes);
+        /* Try to load the shared library and all necessary functions */
+        new_plugin = m64py_Plugin_load(filepath, plugin_type, self->corelib.handle);
         if (new_plugin == NULL)
-            return -1;
+            goto load_plugin_failed;
 
+        /* Don't need ASCII string anymore */
+        Py_DECREF(bytes);
+
+        /* Swap new plugin object with current one */
         PyObject* tmp = *pmember;
         *pmember = (PyObject*)new_plugin;
         Py_DECREF(tmp);
+        return 0;
+
+        load_plugin_failed      : Py_DECREF(bytes);
+        convert_to_ascii_failed : return -1;
     }
     else if (value == Py_None)
     {
@@ -308,4 +331,82 @@ m64py_EmulatorType_init(void)
     if (PyType_Ready(&m64py_EmulatorType) < 0)
         return -1;
     return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+start_plugin(m64py_Emulator* emu, PyObject* maybePlugin)
+{
+    m64p_error result;
+    m64py_Plugin* plugin;
+
+    if (!m64py_Plugin_CheckExact(maybePlugin))
+        return 0;
+    plugin = (m64py_Plugin*)maybePlugin;
+
+    /* call the plugin's initialization function and make sure it starts okay */
+    if ((result = plugin->PluginStartup(emu->corelib.handle, NULL, NULL)) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Plugin \"%s\" failed to start. Error code %d", plugin->name, result);
+        goto start_plugin_failed;
+    }
+
+    /* Attach plugin to corelib */
+    if ((result = emu->corelib.CoreAttachPlugin(plugin->type, plugin->handle)) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to attach plugin \"%s\" to core. Error code %d", plugin->name, result);
+        goto attach_plugin_failed;
+    }
+
+    return 0;
+
+    attach_plugin_failed : plugin->PluginShutdown();
+    start_plugin_failed  : return -1;
+}
+
+/* ------------------------------------------------------------------------- */
+static void
+stop_plugin(m64py_Emulator* emu, PyObject* maybePlugin)
+{
+    m64py_Plugin* plugin;
+    if (!m64py_Plugin_CheckExact(maybePlugin))
+        return;
+    plugin = (m64py_Plugin*)maybePlugin;
+
+    emu->corelib.CoreDetachPlugin(plugin->type);
+    plugin->PluginShutdown();
+}
+
+/* ------------------------------------------------------------------------- */
+int
+m64py_Emulator_start_plugins(m64py_Emulator* self)
+{
+    if (start_plugin(self, self->input_plugin) != 0)
+        goto input_plugin_failed;
+
+    if (start_plugin(self, self->audio_plugin) != 0)
+        goto audio_plugin_failed;
+
+    if (start_plugin(self, self->video_plugin) != 0)
+        goto video_plugin_failed;
+
+    if (start_plugin(self, self->rsp_plugin) != 0)
+        goto rsp_plugin_failed;
+
+    return 0;
+
+    rsp_plugin_failed   : stop_plugin(self, self->video_plugin);
+    video_plugin_failed : stop_plugin(self, self->audio_plugin);
+    audio_plugin_failed : stop_plugin(self, self->input_plugin);
+    input_plugin_failed : return -1;
+}
+
+/* ------------------------------------------------------------------------- */
+void
+m64py_Emulator_stop_plugins(m64py_Emulator* self)
+{
+    stop_plugin(self, self->rsp_plugin);
+    stop_plugin(self, self->video_plugin);
+    stop_plugin(self, self->audio_plugin);
+    stop_plugin(self, self->input_plugin);
 }

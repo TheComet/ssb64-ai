@@ -30,6 +30,18 @@ add_builtin_types_to_module(PyObject* m)
 }
 
 /* ------------------------------------------------------------------------- */
+static int
+add_constants_to_module(PyObject* m)
+{
+    /* Fighters */
+    if (PyModule_AddIntConstant(m, "PIKACHU", 0) != 0) return -1;
+
+    /* Stages */
+    if (PyModule_AddIntConstant(m, "DREAMLAND", 0) != 0) return -1;
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
 static PyModuleDef m64py_module = {
     PyModuleDef_HEAD_INIT,
     "m64py",        /* module name */
@@ -53,6 +65,7 @@ PyMODINIT_FUNC PyInit_m64py(void)
 
     if (init_builtin_types() != 0)           goto init_module_failed;
     if (add_builtin_types_to_module(m) != 0) goto init_module_failed;
+    if (add_constants_to_module(m) != 0)     goto init_module_failed;
 
     return m;
 

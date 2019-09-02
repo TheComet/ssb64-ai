@@ -9,6 +9,8 @@
 static void
 SSB64_dealloc(m64py_SSB64* self)
 {
+    m64py_Emulator_stop_plugins(self->emu);
+    Py_XDECREF(self->emu);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -17,14 +19,68 @@ static PyObject*
 SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     m64py_SSB64* self;
+    const char* rom_file_name;
+    FILE* rom_file;
+    long rom_size;
+    void* rom_buffer;
+    m64p_error result;
 
     self = (m64py_SSB64*)type->tp_alloc(type, 0);
     if (self == NULL)
         goto alloc_self_failed;
 
+    if (!PyArg_ParseTuple(args, "O!s", &m64py_EmulatorType, &self->emu, &rom_file_name))
+        goto parse_args_failed;
+    Py_INCREF(self->emu);
+
+    /* Corelib expects a memory blob containing the ROM, so we have to load
+     * the file into memory */
+    rom_file = fopen(rom_file_name, "rb");
+    if (rom_file == NULL)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to open file \"%s\"", rom_file_name);
+        goto open_rom_file_failed;
+    }
+
+    /* Determine length */
+    fseek(rom_file, 0L, SEEK_END);
+    rom_size = ftell(rom_file);
+    fseek(rom_file, 0L, SEEK_SET);
+
+    /* Copy ROM into memory */
+    rom_buffer = malloc(rom_size);
+    if (rom_buffer == NULL)
+    {
+        PyErr_NoMemory();
+        goto malloc_rom_buffer_failed;
+    }
+    if (fread(rom_buffer, 1, rom_size, rom_file) != rom_size)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to read ROM file into memory");
+        goto read_rom_failed;
+    }
+
+    /* Give ROM image to corelib */
+    if ((result = self->emu->corelib.CoreDoCommand(M64CMD_ROM_OPEN, rom_size, rom_buffer)) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to open ROM image: Error code %d", result);
+        goto read_rom_failed;
+    }
+
+    /* With ROM successfully loaded, we can now start all plugins */
+    m64py_Emulator_start_plugins(self->emu);
+
+    /* Cleanup - corelib copies buffer so these aren't needed */
+    free(rom_buffer);
+    fclose(rom_file);
+
     return (PyObject*)self;
 
-    alloc_self_failed : return NULL;
+    read_rom_failed          : free(rom_buffer);
+    malloc_rom_buffer_failed : fclose(rom_file);
+    open_rom_file_failed     :
+    parse_args_failed        : Py_DECREF(self);
+    alloc_self_failed        : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -59,7 +115,7 @@ start_game(PyObject* self, PyObject* arg)
 static PyObject*
 is_running(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    Py_RETURN_TRUE;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -174,7 +230,6 @@ PyTypeObject m64py_SSB64Type = {
 int
 m64py_SSB64Type_init(void)
 {
-    m64py_SSB64Type.tp_new = PyType_GenericNew;
     if (PyType_Ready(&m64py_SSB64Type) < 0)
         return -1;
     return 0;
