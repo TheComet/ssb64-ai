@@ -2,7 +2,12 @@
 #define M64PY_TYPE_PLUGIN_H
 
 #include "Python.h"
-#include "m64p_types.h"
+#include "m64p_common.h"
+
+#define M64PY_PLUGIN_FUNCTIONS \
+    X(PluginGetVersion) \
+    X(PluginStartup) \
+    X(PluginShutdown)
 
 typedef struct m64py_Emulator m64py_Emulator;
 
@@ -11,6 +16,9 @@ typedef struct m64py_Plugin
     PyObject_HEAD
     m64p_plugin_type type;
     m64p_dynlib_handle handle;
+#define X(name) ptr_##name name;
+    M64PY_PLUGIN_FUNCTIONS
+#undef X
 } m64py_Plugin;
 
 extern PyTypeObject m64py_PluginType;

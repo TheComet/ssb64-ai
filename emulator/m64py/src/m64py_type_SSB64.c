@@ -59,6 +59,13 @@ start_game(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
+is_running(PyObject* self, PyObject* arg)
+{
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
 read_player_position(PyObject* self, PyObject* arg)
 {
     Py_RETURN_NONE;
@@ -87,6 +94,20 @@ read_player_anim_progress(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
+read_player_shield_health(PyObject* self, PyObject* arg)
+{
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+read_player_damage(PyObject* self, PyObject* arg)
+{
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
 read_whispy_wind(PyObject* self, PyObject* arg)
 {
     Py_RETURN_NONE;
@@ -97,11 +118,14 @@ static PyMethodDef SSB64_methods[] = {
     {"set_tournament_rules",      set_tournament_rules,      METH_NOARGS, ""},
     {"set_character",             set_character,             METH_VARARGS, ""},
     {"set_stage",                 set_stage,                 METH_O, ""},
-    {"start_game",                start_game,                METH_O, ""},
+    {"start_game",                start_game,                METH_NOARGS, ""},
+    {"is_running",                is_running,                METH_NOARGS, ""},
     {"read_player_position",      read_player_position,      METH_O, ""},
     {"read_player_orientation",   read_player_orientation,   METH_O, ""},
     {"read_player_anim_state",    read_player_anim_state,    METH_O, ""},
     {"read_player_anim_progress", read_player_anim_progress, METH_O, ""},
+    {"read_player_shield_health", read_player_shield_health, METH_O, ""},
+    {"read_player_damage",        read_player_damage,        METH_O, ""},
     {"read_whispy_wind",          read_whispy_wind,          METH_NOARGS, ""},
     {NULL}
 };

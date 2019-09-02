@@ -53,16 +53,6 @@ foreach (COMPONENT ${MUPEN_COMPONENTS})
 endforeach ()
 
 ###############################################################################
-# Mupen64plus core library is linked to the python library and needs to be
-# importable
-###############################################################################
-
-add_library (mupen64plus SHARED IMPORTED)
-set_property (TARGET mupen64plus PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/projects/unix/${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2.0.0")
-target_include_directories (mupen64plus INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
-add_dependencies (mupen64plus ${MUPEN_COMPONENTS})
-
-###############################################################################
 # Python bindings
 ###############################################################################
 
@@ -73,14 +63,14 @@ add_library (m64py SHARED
     "m64py/src/m64py_type_SSB64.c"
     $<$<PLATFORM_ID:Linux>:m64py/src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:m64py/src/osal_dynamiclib_win32.c>)
-
-target_include_directories (m64py PRIVATE "m64py/include")
-
+target_include_directories (m64py
+    PRIVATE
+        "m64py/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
+add_dependencies (m64py ${MUPEN_COMPONENTS})
 set_target_properties (m64py PROPERTIES
     PREFIX ""
     DBG_POSTFIX ""
     OUTPUT_NAME "m64py")
-
 find_package (Python COMPONENTS Development REQUIRED)
 target_link_libraries (m64py PRIVATE Python::Python)
-target_link_libraries (m64py PRIVATE mupen64plus)

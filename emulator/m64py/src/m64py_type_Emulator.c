@@ -1,15 +1,16 @@
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Plugin.h"
+#include "m64py_type_SSB64.h"
 #include <structmember.h>
 
-#define M64P_CORE_PROTOTYPES
-#include "m64p_frontend.h"
 #include "osal_dynamiclib.h"
 
 #include <stdint.h>
 #include <stdio.h>
 
 #define CORE_API_VERSION 0x020001
+
+static int g_corelib_loaded = 0;
 
 /* ------------------------------------------------------------------------- */
 static void
@@ -19,7 +20,11 @@ Emulator_dealloc(m64py_Emulator* self)
     Py_XDECREF(self->video_plugin);
     Py_XDECREF(self->video_plugin);
     Py_XDECREF(self->rsp_plugin);
-    CoreShutdown();
+
+    self->corelib.CoreShutdown();
+    osal_dynlib_close(self->corelib.handle);
+    g_corelib_loaded = 0;
+
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -28,44 +33,74 @@ static PyObject*
 Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     m64py_Emulator* self;
-    const char *config_path, *data_path;
+    const char *corelib_path, *config_path, *data_path;
+    m64p_error result;
 
-    if (!PyArg_ParseTuple(args, "ss", &config_path, &data_path))
-        return NULL;
-
-    /* This function checks if it was already initialized, so it's fine to call
-     * it again */
-    if (CoreStartup(CORE_API_VERSION,
-                    config_path,
-                    data_path,
-                    NULL, NULL, /* Debug name/callback */
-                    NULL, NULL  /* State name/callback */
-            ) != M64ERR_SUCCESS)
+    /* mupen64plus has global state so enforce only one instance of the Emulator
+     * object */
+    if (g_corelib_loaded)
     {
         PyErr_SetString(PyExc_RuntimeError, "There can only be one instance of m64py.Emulator (libmupen64plus has static state)");
-        goto libmupen_init_failed;
+        return NULL;
     }
+
+    if (!PyArg_ParseTuple(args, "sss", &corelib_path, &config_path, &data_path))
+        return NULL;
 
     self = (m64py_Emulator*)type->tp_alloc(type, 0);
     if (self == NULL)
         goto alloc_self_failed;
 
+    /* Try to load mupen64plus corelib */
+    if (osal_dynlib_open(&self->corelib.handle, corelib_path) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\"", corelib_path);
+        goto open_corelib_failed;
+    }
+
+    /* Load all function pointers */
+#define X(name) \
+        if ((self->corelib.name = (ptr_##name)osal_dynlib_getproc(self->corelib.handle, #name)) == NULL) \
+        { \
+            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from core library \"%s\"", #name, corelib_path); \
+            goto load_corelib_functions_failed; \
+        }
+    M64PY_CORELIB_FUNCTIONS
+#undef X
+
+    /* Init corelib */
+    if ((result = self->corelib.CoreStartup(
+            CORE_API_VERSION,
+            config_path,
+            data_path,
+            NULL, NULL, /* Debug name/callback */
+            NULL, NULL  /* State name/callback */
+        )) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to initialize corelib. Error code %d", result);
+        goto corelib_startup_failed;
+    }
+
     self->input_plugin = (Py_INCREF(Py_None), Py_None);
-    self->video_plugin = (Py_INCREF(Py_None), Py_None);
+    self->audio_plugin = (Py_INCREF(Py_None), Py_None);
     self->video_plugin = (Py_INCREF(Py_None), Py_None);
     self->rsp_plugin   = (Py_INCREF(Py_None), Py_None);
 
+    g_corelib_loaded = 1;
+
     return (PyObject*)self;
 
-    alloc_self_failed    : CoreShutdown();
-    libmupen_init_failed : return NULL;
+    corelib_startup_failed        :
+    load_corelib_functions_failed : osal_dynlib_close(self->corelib.handle);
+    open_corelib_failed           : Py_DECREF(self);
+    alloc_self_failed             : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
 load_ssb64_rom(PyObject* self, PyObject* args)
 {
-    Py_RETURN_NONE;
+    return PyObject_CallObject((PyObject*)&m64py_SSB64Type, NULL);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -77,9 +112,9 @@ unload_rom(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-advance_frame(PyObject* self, PyObject* args)
+advance_frame(m64py_Emulator* self, PyObject* args)
 {
-    if (CoreDoCommand(M64CMD_ADVANCE_FRAME, 0, NULL) != M64ERR_SUCCESS)
+    if (self->corelib.CoreDoCommand(M64CMD_ADVANCE_FRAME, 0, NULL) != M64ERR_SUCCESS)
     {
         PyErr_SetString(PyExc_RuntimeError, "Failed to advance frame: Emulator is in an invalid state");
         return NULL;
@@ -97,10 +132,10 @@ run_macro(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"load_ssb64_rom",    load_ssb64_rom,   METH_VARARGS, ""},
-    {"unload_rom",        unload_rom,       METH_NOARGS, ""},
-    {"advance_frame",     advance_frame,    METH_NOARGS, ""},
-    {"run_macro",         run_macro,        METH_O, ""},
+    {"load_ssb64_rom",  load_ssb64_rom,   METH_VARARGS, ""},
+    {"unload_rom",      unload_rom,       METH_NOARGS, ""},
+    {"advance_frame",   (PyCFunction)advance_frame,    METH_NOARGS, ""},
+    {"run_macro",       run_macro,        METH_O, ""},
     {NULL}
 };
 
@@ -114,7 +149,7 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
         case M64PLUGIN_INPUT : pmember = &self->input_plugin; break;
         case M64PLUGIN_AUDIO : pmember = &self->audio_plugin; break;
         case M64PLUGIN_GFX   : pmember = &self->video_plugin; break;
-        case M64PLUGIN_RSP   : pmember = &self->video_plugin; break;
+        case M64PLUGIN_RSP   : pmember = &self->rsp_plugin; break;
         default :
             PyErr_SetString(PyExc_RuntimeError, "Unsupported plugin type was set (this shouldn't happen)");
             return -1;
@@ -140,7 +175,7 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
             return -1;
 
         PyObject* tmp = *pmember;
-        *pmember = value;
+        *pmember = (PyObject*)new_plugin;
         Py_DECREF(tmp);
     }
     else if (value == Py_None)
@@ -212,7 +247,7 @@ getrsp_plugin(m64py_Emulator* self, void* closure)
 static int
 setrsp_plugin(m64py_Emulator* self, PyObject* value, void* closure)
 {
-    return set_plugin_attribute(self, value, M64PLUGIN_GFX);
+    return set_plugin_attribute(self, value, M64PLUGIN_RSP);
 }
 
 /* ------------------------------------------------------------------------- */

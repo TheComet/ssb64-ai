@@ -3,14 +3,30 @@
 
 #include "Python.h"
 #include "osal_dynamiclib.h"
+#include "m64p_frontend.h"
 
 #define m64py_EmulatorType_CheckExact(op) \
     (Py_TYPE(op) == &m64py_EmulatorType)
 
+#define M64PY_CORELIB_FUNCTIONS \
+    X(CoreStartup) \
+    X(CoreShutdown) \
+    X(CoreAttachPlugin) \
+    X(CoreDetachPlugin) \
+    X(CoreDoCommand)
+
+typedef struct m64py_Emulator_corelib_interface
+{
+    m64p_dynlib_handle handle;
+#define X(name) ptr_##name name;
+    M64PY_CORELIB_FUNCTIONS
+#undef X
+} m64py_corelib_interface;
+
 typedef struct m64py_Emulator
 {
     PyObject_HEAD
-    m64p_dynlib_handle corelib_handle;
+    m64py_corelib_interface corelib;
     PyObject* input_plugin;
     PyObject* audio_plugin;
     PyObject* video_plugin;
