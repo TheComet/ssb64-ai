@@ -1,7 +1,6 @@
 #include "m64py_type_SSB64.h"
 
 #define M64P_CORE_PROTOTYPES
-#include "m64p_frontend.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -10,7 +9,6 @@
 static void
 SSB64_dealloc(m64py_SSB64* self)
 {
-    CoreShutdown();
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
