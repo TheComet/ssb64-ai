@@ -16,20 +16,24 @@ function (build_mupen_component NAME)
     file (GLOB_RECURSE HEADERS "${ROOT_DIR}/src/*.h" "${ROOT_DIR}/src/*.hpp")
 
     if (NAME MATCHES "mupen64plus-core")
-        set (LIBNAME "${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2")
+        set (LIBNAME "${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2.0.0")
+    elseif (NAME MATCHES "mupen64plus-rsp-cxd4")
+        set (LIBNAME "${NAME}-sse2${CMAKE_SHARED_LIBRARY_SUFFIX}")
     else ()
         set (LIBNAME "${NAME}${CMAKE_SHARED_LIBRARY_SUFFIX}")
     endif ()
 
     if (UNIX)
         set (OUTPUT_LIB_FILE "${ROOT_DIR}/projects/unix/${LIBNAME}")
-        add_custom_command (OUTPUT ${OUTPUT_LIB_FILE}
+        set (FINAL_LIB_FILE ${CMAKE_BINARY_DIR}/${LIBNAME})
+        add_custom_command (OUTPUT ${FINAL_LIB_FILE}
             COMMAND make ARGS all -j
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OUTPUT_LIB_FILE} ${FINAL_LIB_FILE}
             WORKING_DIRECTORY "${ROOT_DIR}/projects/unix"
             DEPENDS ${SOURCES} ${HEADERS}
             COMMENT "Building ${NAME} library"
             VERBATIM)
-        add_custom_target (${NAME} DEPENDS ${OUTPUT_LIB_FILE})
+        add_custom_target (${NAME} DEPENDS ${FINAL_LIB_FILE})
     else ()
         message (FATAL_ERROR "Windows is currently not supported")
     endif ()
@@ -54,7 +58,7 @@ endforeach ()
 ###############################################################################
 
 add_library (mupen64plus SHARED IMPORTED)
-set_property (TARGET mupen64plus PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/projects/unix/${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2")
+set_property (TARGET mupen64plus PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/projects/unix/${CMAKE_SHARED_LIBRARY_PREFIX}mupen64plus${CMAKE_SHARED_LIBRARY_SUFFIX}.2.0.0")
 target_include_directories (mupen64plus INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
 add_dependencies (mupen64plus ${MUPEN_COMPONENTS})
 
@@ -65,7 +69,10 @@ add_dependencies (mupen64plus ${MUPEN_COMPONENTS})
 add_library (m64py SHARED
     "m64py/src/m64py.c"
     "m64py/src/m64py_type_Emulator.c"
-    "m64py/src/m64py_type_SSB64.c")
+    "m64py/src/m64py_type_Plugin.c"
+    "m64py/src/m64py_type_SSB64.c"
+    $<$<PLATFORM_ID:Linux>:m64py/src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Windows>:m64py/src/osal_dynamiclib_win32.c>)
 
 target_include_directories (m64py PRIVATE "m64py/include")
 

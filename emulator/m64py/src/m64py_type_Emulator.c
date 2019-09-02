@@ -1,7 +1,10 @@
 #include "m64py_type_Emulator.h"
+#include "m64py_type_Plugin.h"
+#include <structmember.h>
 
 #define M64P_CORE_PROTOTYPES
 #include "m64p_frontend.h"
+#include "osal_dynamiclib.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -12,6 +15,10 @@
 static void
 Emulator_dealloc(m64py_Emulator* self)
 {
+    Py_XDECREF(self->input_plugin);
+    Py_XDECREF(self->video_plugin);
+    Py_XDECREF(self->video_plugin);
+    Py_XDECREF(self->rsp_plugin);
     CoreShutdown();
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -43,45 +50,15 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     if (self == NULL)
         goto alloc_self_failed;
 
+    self->input_plugin = (Py_INCREF(Py_None), Py_None);
+    self->video_plugin = (Py_INCREF(Py_None), Py_None);
+    self->video_plugin = (Py_INCREF(Py_None), Py_None);
+    self->rsp_plugin   = (Py_INCREF(Py_None), Py_None);
+
     return (PyObject*)self;
 
     alloc_self_failed    : CoreShutdown();
     libmupen_init_failed : return NULL;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-set_input_plugin(PyObject* self, PyObject* args)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-set_audio_plugin(PyObject* self, PyObject* args)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-set_video_plugin(PyObject* self, PyObject* args)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-set_rsp_plugin(PyObject* self, PyObject* args)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-load_ai_plugin(PyObject* self, PyObject* args)
-{
-    Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -120,14 +97,130 @@ run_macro(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"set_input_plugin",  set_input_plugin, METH_O, ""},
-    {"set_audio_plugin",  set_audio_plugin, METH_O, ""},
-    {"set_video_plugin",  set_video_plugin, METH_O, ""},
-    {"set_rsp_plugin",    set_rsp_plugin,   METH_O, ""},
-    {"load_ssb64_rom",    load_ssb64_rom,    METH_O, ""},
-    {"unload_rom",        unload_rom,        METH_NOARGS, ""},
-    {"advance_frame",     advance_frame,     METH_NOARGS, ""},
-    {"run_macro",         run_macro,         METH_O, ""},
+    {"load_ssb64_rom",    load_ssb64_rom,   METH_VARARGS, ""},
+    {"unload_rom",        unload_rom,       METH_NOARGS, ""},
+    {"advance_frame",     advance_frame,    METH_NOARGS, ""},
+    {"run_macro",         run_macro,        METH_O, ""},
+    {NULL}
+};
+
+/* ------------------------------------------------------------------------- */
+static int
+set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plugin_type)
+{
+    PyObject** pmember;
+    switch (plugin_type)
+    {
+        case M64PLUGIN_INPUT : pmember = &self->input_plugin; break;
+        case M64PLUGIN_AUDIO : pmember = &self->audio_plugin; break;
+        case M64PLUGIN_GFX   : pmember = &self->video_plugin; break;
+        case M64PLUGIN_RSP   : pmember = &self->video_plugin; break;
+        default :
+            PyErr_SetString(PyExc_RuntimeError, "Unsupported plugin type was set (this shouldn't happen)");
+            return -1;
+    }
+
+    if (value == NULL)
+    {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete input plugin attribute");
+        return -1;
+    }
+
+    if (PyUnicode_Check(value))
+    {
+        m64py_Plugin* new_plugin;
+        PyObject* bytes = PyUnicode_AsASCIIString(value);
+        if (bytes == NULL)
+            return -1;
+
+        const char* filepath = PyBytes_AS_STRING(bytes);
+        new_plugin = m64py_Plugin_load(self, filepath, plugin_type);
+        Py_DECREF(bytes);
+        if (new_plugin == NULL)
+            return -1;
+
+        PyObject* tmp = *pmember;
+        *pmember = value;
+        Py_DECREF(tmp);
+    }
+    else if (value == Py_None)
+    {
+        PyObject* tmp = *pmember;
+        Py_INCREF(value);
+        *pmember = value;
+        Py_DECREF(tmp);
+    }
+    else
+    {
+        PyErr_SetString(PyExc_TypeError, "Value must be either None or a path to a plugin to load");
+        return -1;
+    }
+
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+getinput_plugin(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->input_plugin), self->input_plugin;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+setinput_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    return set_plugin_attribute(self, value, M64PLUGIN_INPUT);
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+getaudio_plugin(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->audio_plugin), self->audio_plugin;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+setaudio_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    return set_plugin_attribute(self, value, M64PLUGIN_AUDIO);
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+getvideo_plugin(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->video_plugin), self->video_plugin;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+setvideo_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    return set_plugin_attribute(self, value, M64PLUGIN_GFX);
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+getrsp_plugin(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->rsp_plugin), self->rsp_plugin;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+setrsp_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    return set_plugin_attribute(self, value, M64PLUGIN_GFX);
+}
+
+/* ------------------------------------------------------------------------- */
+static PyGetSetDef Emulator_getsetters[] = {
+    {"input_plugin", (getter)getinput_plugin, (setter)setinput_plugin, "", NULL},
+    {"audio_plugin", (getter)getaudio_plugin, (setter)setaudio_plugin, "", NULL},
+    {"video_plugin", (getter)getvideo_plugin, (setter)setvideo_plugin, "", NULL},
+    {"rsp_plugin",   (getter)getrsp_plugin,   (setter)setrsp_plugin, "", NULL},
     {NULL}
 };
 
@@ -162,7 +255,7 @@ PyTypeObject m64py_EmulatorType = {
     0,                            /* tp_iternext */
     Emulator_methods,             /* tp_methods */
     0,                            /* tp_members */
-    0,                            /* tp_getset */
+    Emulator_getsetters,          /* tp_getset */
     0,                            /* tp_base */
     0,                            /* tp_dict */
     0,                            /* tp_descr_get */
