@@ -17,9 +17,21 @@ typedef struct m64py_Emulator m64py_Emulator;
 typedef struct m64py_Plugin
 {
     PyObject_HEAD
+
+    /*! Whether it's input/video/audio/rsp/etc. */
     m64p_plugin_type type;
+
+    /*! Handle to the loaded shared library */
     m64p_dynlib_handle handle;
+
+    /*!
+     * Points to whatever PluginGetVersion() returns, which I think is just a
+     * static string inside the loaded shared library. Make sure to NULL this
+     * when the plugin is unloaded.
+     */
     const char* name;
+
+    /* Function pointers for plugin API */
 #define X(name) ptr_##name name;
     M64PY_PLUGIN_FUNCTIONS
 #undef X

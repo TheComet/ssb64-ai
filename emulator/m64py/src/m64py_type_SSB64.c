@@ -10,6 +10,8 @@ static void
 SSB64_dealloc(m64py_SSB64* self)
 {
     m64py_Emulator_stop_plugins(self->emu);
+    self->emu->corelib.CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
+    self->emu->is_rom_loaded = 0;
     Py_XDECREF(self->emu);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -68,14 +70,17 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     }
 
     /* With ROM successfully loaded, we can now start all plugins */
-    m64py_Emulator_start_plugins(self->emu);
+    if (m64py_Emulator_start_plugins(self->emu) != 0)
+        goto start_plugins_failed;
 
     /* Cleanup - corelib copies buffer so these aren't needed */
     free(rom_buffer);
     fclose(rom_file);
 
+    self->emu->is_rom_loaded = 1;
     return (PyObject*)self;
 
+    start_plugins_failed     : self->emu->corelib.CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     read_rom_failed          : free(rom_buffer);
     malloc_rom_buffer_failed : fclose(rom_file);
     open_rom_file_failed     :

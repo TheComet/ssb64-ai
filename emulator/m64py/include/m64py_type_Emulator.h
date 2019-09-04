@@ -31,6 +31,9 @@ typedef struct m64py_Emulator
     PyObject* audio_plugin;
     PyObject* video_plugin;
     PyObject* rsp_plugin;
+    PyObject* frame_callback;
+    PyObject* log_message_callback;
+    char is_rom_loaded;
 } m64py_Emulator;
 
 extern PyTypeObject m64py_EmulatorType;

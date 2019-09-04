@@ -71,7 +71,6 @@ m64py_Plugin_load(const char* path_to_plugin, m64p_plugin_type type, m64p_dynlib
 {
     m64p_plugin_type PluginType = (m64p_plugin_type)0;
     int PluginVersion = 0;
-    const char *PluginName = NULL;
 
     m64py_Plugin* plugin = (m64py_Plugin*)PyObject_CallObject((PyObject*)&m64py_PluginType, NULL);
     if (plugin == NULL)
