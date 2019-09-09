@@ -41,7 +41,7 @@ log_message_callback(m64py_Emulator* self, int level, const char* message)
 
     PyTuple_SET_ITEM(args, 0, py_level);
     PyTuple_SET_ITEM(args, 1, py_message);
-    result = PyObject_Call(self->log_message_callback, args, NULL);
+    result = PyObject_CallObject(self->log_message_callback, args);
     Py_DECREF(args);
 
     if (result != NULL)
@@ -69,7 +69,7 @@ frame_callback(int current_frame)
         goto py_args_failed;
 
     PyTuple_SET_ITEM(args, 0, py_frame);
-    result = PyObject_Call(g_emu->frame_callback, args, NULL);
+    result = PyObject_CallObject(g_emu->frame_callback, args);
     Py_DECREF(args);
 
     if (result != NULL)
@@ -294,7 +294,6 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
                 /* New plugin failed to start, so old plugin was re-attached
                  * again */
                 goto attach_plugin_failed;
-                break;
 
             default : break;
         }

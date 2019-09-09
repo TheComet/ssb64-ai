@@ -124,52 +124,83 @@ is_running(PyObject* self, PyObject* arg)
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_POSITION_DOC \
+"-> Tuple[float,float]: Absolute position of player"
 static PyObject*
 read_player_position(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    PyObject *xpos, *ypos, *args;
+
+    if ((xpos = PyFloat_FromDouble(0.0)) == NULL)
+        goto alloc_xpos_failed;
+
+    if ((ypos = PyFloat_FromDouble(0.0)) == NULL)
+        goto alloc_ypos_failed;
+
+    if ((args = PyTuple_New(2)) == NULL)
+        goto alloc_args_failed;
+
+    PyTuple_SET_ITEM(args, 0, xpos);
+    PyTuple_SET_ITEM(args, 1, ypos);
+    return args;
+
+    alloc_args_failed : Py_DECREF(ypos);
+    alloc_ypos_failed : Py_DECREF(xpos);
+    alloc_xpos_failed : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_ORIENTATION_DOC \
+"-> int: -1=facing left, 1=facing right"
 static PyObject*
 read_player_orientation(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyLong_FromLong(-1);
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_ANIM_STATE_DOC \
+"-> int: The currently active animation, a number between 0-80 or something"
 static PyObject*
 read_player_anim_state(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyLong_FromLong(0);
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_ANIM_PROGRESS_DOC \
+"-> float: Progress of the currently active animation from 0-1"
 static PyObject*
 read_player_anim_progress(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyFloat_FromDouble(0.0);
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_SHIELD_HEALTH_DOC \
+"-> float: How much shield the player currently has from 0-1"
 static PyObject*
 read_player_shield_health(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyFloat_FromDouble(1.0);
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_PLAYER_DAMAGE_DOC \
+"-> int: Current \"percentage\" of the player from 0-999"
 static PyObject*
 read_player_damage(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyLong_FromLong(0);
 }
 
 /* ------------------------------------------------------------------------- */
+#define READ_WHISPY_WIND_DOC \
+"-> float: 0=no wind, -1=blowing left, 1=blowing right. Will ramp up/down as the animation begins/ends"
 static PyObject*
 read_whispy_wind(PyObject* self, PyObject* arg)
 {
-    Py_RETURN_NONE;
+    return PyFloat_FromDouble(0.0);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -179,13 +210,13 @@ static PyMethodDef SSB64_methods[] = {
     {"set_stage",                 set_stage,                 METH_O, ""},
     {"start_game",                start_game,                METH_NOARGS, ""},
     {"is_running",                is_running,                METH_NOARGS, ""},
-    {"read_player_position",      read_player_position,      METH_O, ""},
-    {"read_player_orientation",   read_player_orientation,   METH_O, ""},
-    {"read_player_anim_state",    read_player_anim_state,    METH_O, ""},
-    {"read_player_anim_progress", read_player_anim_progress, METH_O, ""},
-    {"read_player_shield_health", read_player_shield_health, METH_O, ""},
-    {"read_player_damage",        read_player_damage,        METH_O, ""},
-    {"read_whispy_wind",          read_whispy_wind,          METH_NOARGS, ""},
+    {"read_player_position",      read_player_position,      METH_O, READ_PLAYER_POSITION_DOC},
+    {"read_player_orientation",   read_player_orientation,   METH_O, READ_PLAYER_ORIENTATION_DOC},
+    {"read_player_anim_state",    read_player_anim_state,    METH_O, READ_PLAYER_ANIM_STATE_DOC},
+    {"read_player_anim_progress", read_player_anim_progress, METH_O, READ_PLAYER_ANIM_PROGRESS_DOC},
+    {"read_player_shield_health", read_player_shield_health, METH_O, READ_PLAYER_SHIELD_HEALTH_DOC},
+    {"read_player_damage",        read_player_damage,        METH_O, READ_PLAYER_DAMAGE_DOC},
+    {"read_whispy_wind",          read_whispy_wind,          METH_NOARGS, READ_WHISPY_WIND_DOC},
     {NULL}
 };
 
