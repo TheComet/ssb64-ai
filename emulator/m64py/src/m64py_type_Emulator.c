@@ -2,6 +2,7 @@
 #include "m64py_type_Plugin.h"
 #include "m64py_type_SSB64.h"
 #include <structmember.h>
+#include <frameobject.h>
 
 #include "osal_dynamiclib.h"
 
@@ -25,6 +26,45 @@ stop_plugin(m64py_Emulator* emu, PyObject* maybePlugin);
 
 /* ------------------------------------------------------------------------- */
 static void
+catch_python_exception(void)
+{
+    PyObject *exc_type, *exc_value, *exc_tb;
+
+    PyErr_Fetch(&exc_type, &exc_value, &exc_tb);
+    PyErr_NormalizeException(&exc_type, &exc_value, &exc_tb);
+
+    if (exc_tb)
+    {
+        PyTracebackObject* traceback = (PyTracebackObject*)exc_tb;
+        fprintf(stderr, "Traceback (most recent call last):\n");
+        for (traceback = (PyTracebackObject*)exc_tb; traceback; traceback = traceback->tb_next)
+        {
+            PyFrameObject* frame = traceback->tb_frame;
+            fprintf(stderr, "  File \"%s\", line %d, in %s\n",
+                    PyUnicode_AsUTF8(frame->f_code->co_filename),
+                    PyCode_Addr2Line(frame->f_code, frame->f_lasti),
+                    PyUnicode_AsUTF8(frame->f_code->co_name)
+            );
+        }
+    }
+
+    if (exc_value)
+    {
+        PyObject* exc_value_str = PyObject_Str(exc_value);
+        if (exc_value_str == NULL)
+            goto exc_value_failed;
+        fprintf(stderr, "%s: %s\n", Py_TYPE(exc_type)->tp_name, PyUnicode_AsUTF8(exc_value_str));
+        Py_DECREF(exc_value_str);
+    } exc_value_failed:
+
+    Py_XDECREF(exc_type);
+    Py_XDECREF(exc_value);
+    Py_XDECREF(exc_tb);
+    PyErr_Clear();
+}
+
+/* ------------------------------------------------------------------------- */
+static void
 log_message_callback(m64py_Emulator* self, int level, const char* message)
 {
     PyObject *py_level, *py_message, *args, *result;
@@ -44,7 +84,9 @@ log_message_callback(m64py_Emulator* self, int level, const char* message)
     result = PyObject_CallObject(self->log_message_callback, args);
     Py_DECREF(args);
 
-    if (result != NULL)
+    if (result == NULL)
+        catch_python_exception();
+    else
         Py_DECREF(result);
 
     return;
@@ -72,7 +114,9 @@ frame_callback(int current_frame)
     result = PyObject_CallObject(g_emu->frame_callback, args);
     Py_DECREF(args);
 
-    if (result != NULL)
+    if (result == NULL)
+        catch_python_exception();
+    else
         Py_DECREF(result);
 
     return;
