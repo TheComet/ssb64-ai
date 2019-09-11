@@ -8,7 +8,8 @@
 static void
 Plugin_dealloc(m64py_Plugin* self)
 {
-    osal_dynlib_close(self->handle);
+    if (self->handle)
+        osal_dynlib_close(self->handle);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 

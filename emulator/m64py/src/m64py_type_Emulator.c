@@ -35,7 +35,7 @@ catch_python_exception(void)
 
     if (exc_tb)
     {
-        PyTracebackObject* traceback = (PyTracebackObject*)exc_tb;
+        PyTracebackObject* traceback;
         fprintf(stderr, "Traceback (most recent call last):\n");
         for (traceback = (PyTracebackObject*)exc_tb; traceback; traceback = traceback->tb_next)
         {
@@ -84,9 +84,7 @@ log_message_callback(m64py_Emulator* self, int level, const char* message)
     result = PyObject_CallObject(self->log_message_callback, args);
     Py_DECREF(args);
 
-    if (result == NULL)
-        catch_python_exception();
-    else
+    if (result != NULL)
         Py_DECREF(result);
 
     return;
@@ -115,7 +113,12 @@ frame_callback(int current_frame)
     Py_DECREF(args);
 
     if (result == NULL)
-        catch_python_exception();
+    {
+        /* We want to catch all exceptions except for keyboard interrupts */
+        if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt))
+            catch_python_exception();
+        g_emu->corelib.CoreDoCommand(M64CMD_STOP, 0, NULL);
+    }
     else
         Py_DECREF(result);
 
@@ -149,6 +152,12 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     const char *corelib_path, *config_path, *data_path;
     m64p_error result;
+    static char* kwds_str[] = {
+        "corelib_path",
+        "config_path",
+        "data_path",
+        NULL
+    };
 
     /* mupen64plus has global state so enforce only one instance of the Emulator
      * object */
@@ -158,7 +167,7 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
 
-    if (!PyArg_ParseTuple(args, "sss", &corelib_path, &config_path, &data_path))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "sss", kwds_str, &corelib_path, &config_path, &data_path))
         return NULL;
 
     g_emu = (m64py_Emulator*)type->tp_alloc(type, 0);
@@ -235,6 +244,10 @@ execute(m64py_Emulator* self, PyObject* args)
         PyErr_SetString(PyExc_RuntimeError, "Failed to execute: Emulator is in an invalid state");
         return NULL;
     }
+
+    /* User might exit with an exception set, we need to propagate it */
+    if (PyErr_Occurred())
+        return NULL;
 
     Py_RETURN_NONE;
 }
@@ -639,19 +652,15 @@ stop_plugin(m64py_Emulator* emu, PyObject* maybePlugin)
 int
 m64py_Emulator_start_plugins(m64py_Emulator* self)
 {
-    puts("video");
     if (start_plugin(self, self->video_plugin) != 0)
         goto video_plugin_failed;
 
-    puts("audio");
     if (start_plugin(self, self->audio_plugin) != 0)
         goto audio_plugin_failed;
 
-    puts("input");
     if (start_plugin(self, self->input_plugin) != 0)
         goto input_plugin_failed;
 
-    puts("rsp");
     if (start_plugin(self, self->rsp_plugin) != 0)
         goto rsp_plugin_failed;
 

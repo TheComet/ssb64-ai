@@ -45,7 +45,10 @@ set (MUPEN_COMPONENTS
     mupen64plus-audio-sdl
     mupen64plus-input-sdl
     mupen64plus-rsp-cxd4
-    mupen64plus-video-glide64mk2)
+    #mupen64plus-video-glide64
+    mupen64plus-video-glide64mk2
+    #mupen64plus-video-rice
+)
 
 foreach (COMPONENT ${MUPEN_COMPONENTS})
     message (STATUS ${COMPONENT})
