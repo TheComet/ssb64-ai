@@ -5,6 +5,33 @@
 #include <stdint.h>
 #include <stdio.h>
 
+/* NOTE: Only valid on Dreamland */
+static const unsigned int ADDR_DREAMLAND_PLAYER[4] = {
+    0x80267F14,
+    0x80268A64,
+    0x0, /* currently unknown */
+    0x0  /* currently unknown */
+};
+
+enum player_offsets_e
+{
+    OFF_STATE1      = 0x00,
+    OFF_STATE2      = 0x04,
+    OFF_PERCENT     = 0x08,
+    OFF_SHIELD      = 0x10,
+    OFF_ORIENTATION = 0x20,
+    OFF_SPEED_X     = 0x24,
+    OFF_SPEED_Y     = 0x28,
+    OFF_LAUNCH_X    = 0x30,
+    OFF_LAUNCH_Y    = 0x34,
+    OFF_SPEED_X_ABS = 0x3C,
+    OFF_POS_X       = 0x5C,
+    OFF_POS_Y       = 0x60,
+
+};
+
+static const unsigned int ADDR_WHISPY_BLOWING = 0x80304BFC;
+
 /* ------------------------------------------------------------------------- */
 static void
 SSB64_dealloc(m64py_SSB64* self)
@@ -124,28 +151,102 @@ is_running(PyObject* self, PyObject* arg)
 }
 
 /* ------------------------------------------------------------------------- */
+static int parse_player_idx(PyObject* arg)
+{
+    int player_idx;
+
+    if (!PyLong_Check(arg))
+    {
+        PyErr_SetString(PyExc_TypeError, "Expected player index [0-3] as an integer");
+        return -1;
+    }
+    player_idx = PyLong_AS_LONG(arg);
+    if (player_idx < 0 || player_idx > 3)
+    {
+        PyErr_Format(PyExc_ValueError, "Player index is out of bounds (%d)", player_idx);
+        return -1;
+    }
+
+    return player_idx;
+}
+
+/* ------------------------------------------------------------------------- */
 #define READ_PLAYER_POSITION_DOC \
 "-> Tuple[float,float]: Absolute position of player"
 static PyObject*
-read_player_position(PyObject* self, PyObject* arg)
+read_player_position(m64py_SSB64* self, PyObject* arg)
 {
-    PyObject *xpos, *ypos, *args;
+    PyObject *py_xpos, *py_ypos, *args;
+    int player_idx;
+    unsigned int xpos_address, ypos_address, xpos_int, ypos_int;
+    float xpos, ypos;
 
-    if ((xpos = PyFloat_FromDouble(0.0)) == NULL)
+    if ((player_idx = parse_player_idx(arg)) < 0)
+        return NULL;
+
+    xpos_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_POS_X;
+    ypos_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_POS_Y;
+    xpos_int = self->emu->corelib.DebugMemRead32(xpos_address);
+    ypos_int = self->emu->corelib.DebugMemRead32(ypos_address);
+
+    /* It is a ieee754 float, hopefully this never gets compiled on a computer
+     * that has a different fp implementation */
+    xpos = *(float*)&xpos_int;
+    ypos = *(float*)&ypos_int;
+
+    if ((py_xpos = PyFloat_FromDouble(xpos)) == NULL)
         goto alloc_xpos_failed;
-
-    if ((ypos = PyFloat_FromDouble(0.0)) == NULL)
+    if ((py_ypos = PyFloat_FromDouble(ypos)) == NULL)
         goto alloc_ypos_failed;
-
     if ((args = PyTuple_New(2)) == NULL)
         goto alloc_args_failed;
+    PyTuple_SET_ITEM(args, 0, py_xpos);
+    PyTuple_SET_ITEM(args, 1, py_ypos);
 
-    PyTuple_SET_ITEM(args, 0, xpos);
-    PyTuple_SET_ITEM(args, 1, ypos);
     return args;
 
-    alloc_args_failed : Py_DECREF(ypos);
-    alloc_ypos_failed : Py_DECREF(xpos);
+    alloc_args_failed : Py_DECREF(py_ypos);
+    alloc_ypos_failed : Py_DECREF(py_xpos);
+    alloc_xpos_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+#define READ_PLAYER_LAUNCH_VELOCITY_DOC \
+"-> Tuple[float,float]: Speed at which the player is currently being launched (e.g. after being hit by the opponent)"
+static PyObject*
+read_player_launch_velocity(m64py_SSB64* self, PyObject* arg)
+{
+    PyObject *py_xlaunch, *py_ylaunch, *args;
+    int player_idx;
+    unsigned int xlaunch_address, ylaunch_address, xlaunch_int, ylaunch_int;
+    float xlaunch, ylaunch;
+
+    if ((player_idx = parse_player_idx(arg)) < 0)
+        return NULL;
+
+    xlaunch_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_LAUNCH_X;
+    ylaunch_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_LAUNCH_Y;
+    xlaunch_int = self->emu->corelib.DebugMemRead32(xlaunch_address);
+    ylaunch_int = self->emu->corelib.DebugMemRead32(ylaunch_address);
+
+    /* It is a ieee754 float, hopefully this never gets compiled on a computer
+     * that has a different fp implementation */
+    xlaunch = *(float*)&xlaunch_int;
+    ylaunch = *(float*)&ylaunch_int;
+
+    if ((py_xlaunch = PyFloat_FromDouble(xlaunch)) == NULL)
+        goto alloc_xpos_failed;
+    if ((py_ylaunch = PyFloat_FromDouble(ylaunch)) == NULL)
+        goto alloc_ypos_failed;
+    if ((args = PyTuple_New(2)) == NULL)
+        goto alloc_args_failed;
+    PyTuple_SET_ITEM(args, 0, py_xlaunch);
+    PyTuple_SET_ITEM(args, 1, py_ylaunch);
+
+    return args;
+
+    alloc_args_failed : Py_DECREF(py_ylaunch);
+    alloc_ypos_failed : Py_DECREF(py_xlaunch);
     alloc_xpos_failed : return NULL;
 }
 
@@ -155,83 +256,107 @@ read_player_position(PyObject* self, PyObject* arg)
 static PyObject*
 read_player_orientation(m64py_SSB64* self, PyObject* arg)
 {
-    int player_idx;
-
-    if (!PyLong_Check(arg))
-    {
-        PyErr_SetString(PyExc_TypeError, "Expected player index [0-3] as an integer");
+    int player_idx, orientation;
+    unsigned int address;
+    if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-    }
-    player_idx = PyLong_AS_LONG(arg);
-    if (player_idx < 0 || player_idx > 3)
-    {
-        PyErr_Format(PyExc_ValueError, "Player index is out of bounds (%d)", player_idx);
-        return NULL;
-    }
 
-    int direction_facing = self->emu->corelib.DebugMemRead32(0x80267F34);
-    return PyLong_FromLong(direction_facing);
+    address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_ORIENTATION;
+    orientation = self->emu->corelib.DebugMemRead32(address);
+
+    return PyLong_FromLong(orientation);
 }
 
 /* ------------------------------------------------------------------------- */
 #define READ_PLAYER_ANIM_STATE_DOC \
-"-> int: The currently active animation, a number between 0-80 or something"
+"-> int: The currently active animation, a number between 0-250 or something"
 static PyObject*
-read_player_anim_state(PyObject* self, PyObject* arg)
+read_player_anim_state(m64py_SSB64* self, PyObject* arg)
 {
-    return PyLong_FromLong(0);
+    int player_idx;
+    unsigned int address, state;
+    if ((player_idx = parse_player_idx(arg)) < 0)
+        return NULL;
+
+    address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_STATE1;
+    state = self->emu->corelib.DebugMemRead32(address);
+
+    return PyLong_FromLong(state);
 }
 
 /* ------------------------------------------------------------------------- */
 #define READ_PLAYER_ANIM_PROGRESS_DOC \
 "-> float: Progress of the currently active animation from 0-1"
 static PyObject*
-read_player_anim_progress(PyObject* self, PyObject* arg)
+read_player_anim_progress(m64py_SSB64* self, PyObject* arg)
 {
     return PyFloat_FromDouble(0.0);
 }
 
 /* ------------------------------------------------------------------------- */
 #define READ_PLAYER_SHIELD_HEALTH_DOC \
-"-> float: How much shield the player currently has from 0-1"
+"-> int: How much shield the player currently has. Some characters have more shield health than others. Pikachu's is 55, for example.'"
 static PyObject*
-read_player_shield_health(PyObject* self, PyObject* arg)
+read_player_shield_health(m64py_SSB64* self, PyObject* arg)
 {
-    return PyFloat_FromDouble(1.0);
+    int player_idx;
+    unsigned int address, shield;
+    if ((player_idx = parse_player_idx(arg)) < 0)
+        return NULL;
+
+    address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_SHIELD;
+    shield = self->emu->corelib.DebugMemRead32(address);
+
+    return PyLong_FromLong(shield);
 }
 
 /* ------------------------------------------------------------------------- */
 #define READ_PLAYER_DAMAGE_DOC \
 "-> int: Current \"percentage\" of the player from 0-999"
 static PyObject*
-read_player_damage(PyObject* self, PyObject* arg)
+read_player_damage(m64py_SSB64* self, PyObject* arg)
 {
-    return PyLong_FromLong(0);
+    int player_idx;
+    unsigned int address, percent;
+    if ((player_idx = parse_player_idx(arg)) < 0)
+        return NULL;
+
+    address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_PERCENT;
+    percent = self->emu->corelib.DebugMemRead32(address);
+
+    return PyLong_FromLong(percent);
 }
 
 /* ------------------------------------------------------------------------- */
 #define READ_WHISPY_WIND_DOC \
 "-> float: 0=no wind, -1=blowing left, 1=blowing right. Will ramp up/down as the animation begins/ends"
 static PyObject*
-read_whispy_wind(PyObject* self, PyObject* arg)
+read_whispy_wind(m64py_SSB64* self, PyObject* arg)
 {
-    return PyFloat_FromDouble(0.0);
+    unsigned int wind_int;
+    float wind;
+
+    wind_int = self->emu->corelib.DebugMemRead32(ADDR_WHISPY_BLOWING);
+    wind = *(float*)&wind_int;
+
+    return PyFloat_FromDouble(wind);
 }
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef SSB64_methods[] = {
-    {"set_tournament_rules",      set_tournament_rules,                   METH_NOARGS, ""},
-    {"set_character",             set_character,                          METH_VARARGS, ""},
-    {"set_stage",                 set_stage,                              METH_O, ""},
-    {"start_game",                start_game,                             METH_NOARGS, ""},
-    {"is_running",                is_running,                             METH_NOARGS, ""},
-    {"read_player_position",      read_player_position,                   METH_O, READ_PLAYER_POSITION_DOC},
-    {"read_player_orientation",   (PyCFunction)read_player_orientation,   METH_O, READ_PLAYER_ORIENTATION_DOC},
-    {"read_player_anim_state",    read_player_anim_state,                 METH_O, READ_PLAYER_ANIM_STATE_DOC},
-    {"read_player_anim_progress", read_player_anim_progress,              METH_O, READ_PLAYER_ANIM_PROGRESS_DOC},
-    {"read_player_shield_health", read_player_shield_health,              METH_O, READ_PLAYER_SHIELD_HEALTH_DOC},
-    {"read_player_damage",        read_player_damage,                     METH_O, READ_PLAYER_DAMAGE_DOC},
-    {"read_whispy_wind",          read_whispy_wind,                       METH_NOARGS, READ_WHISPY_WIND_DOC},
+    {"set_tournament_rules",        set_tournament_rules,                     METH_NOARGS, ""},
+    {"set_character",               set_character,                            METH_VARARGS, ""},
+    {"set_stage",                   set_stage,                                METH_O, ""},
+    {"start_game",                  start_game,                               METH_NOARGS, ""},
+    {"is_running",                  is_running,                               METH_NOARGS, ""},
+    {"read_player_position",        (PyCFunction)read_player_position,        METH_O, READ_PLAYER_POSITION_DOC},
+    {"read_player_launch_velocity", (PyCFunction)read_player_launch_velocity, METH_O, READ_PLAYER_LAUNCH_VELOCITY_DOC},
+    {"read_player_orientation",     (PyCFunction)read_player_orientation,     METH_O, READ_PLAYER_ORIENTATION_DOC},
+    {"read_player_anim_state",      (PyCFunction)read_player_anim_state,      METH_O, READ_PLAYER_ANIM_STATE_DOC},
+    {"read_player_anim_progress",   (PyCFunction)read_player_anim_progress,   METH_O, READ_PLAYER_ANIM_PROGRESS_DOC},
+    {"read_player_shield_health",   (PyCFunction)read_player_shield_health,   METH_O, READ_PLAYER_SHIELD_HEALTH_DOC},
+    {"read_player_damage",          (PyCFunction)read_player_damage,          METH_O, READ_PLAYER_DAMAGE_DOC},
+    {"read_whispy_wind",            (PyCFunction)read_whispy_wind,            METH_NOARGS, READ_WHISPY_WIND_DOC},
     {NULL}
 };
 
