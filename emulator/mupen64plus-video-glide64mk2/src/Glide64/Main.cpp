@@ -191,7 +191,7 @@ char    capture_path[256];
 
 SDL_sem *mutexProcessDList = SDL_CreateSemaphore(1);
 
-// SOME FUNCTION DEFINITIONS 
+// SOME FUNCTION DEFINITIONS
 
 static void DrawFrameBuffer ();
 
@@ -434,7 +434,7 @@ void ReadSettings ()
 #endif
 
 #ifdef TEXTURE_FILTER
-  
+
   // settings.ghq_fltr range is 0 through 6
   // Filters:\nApply a filter to either smooth or sharpen textures.\nThere are 4 different smoothing filters and 2 different sharpening filters.\nThe higher the number, the stronger the effect,\ni.e. \"Smoothing filter 4\" will have a much more noticeable effect than \"Smoothing filter 1\".\nBe aware that performance may have an impact depending on the game and/or the PC.\n[Recommended: your preference]
   // _("None"),
@@ -748,7 +748,7 @@ void ReadSpecialSettings (const char * name)
       settings.scr_res_y = settings.res_y = resolutions[settings.res_data][1];
     }
     */
-	
+
 	PackedScreenResolution tmpRes = Config_ReadScreenSettings();
 	settings.res_data = tmpRes.resolution;
 	settings.scr_res_x = settings.res_x = tmpRes.width;
@@ -2471,7 +2471,7 @@ void newSwapBuffers()
 
         ChangeSize ();
       }
-    } 
+    }
     else
     {
       debugging = 0;

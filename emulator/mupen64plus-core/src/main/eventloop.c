@@ -20,8 +20,8 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <SDL.h>
-#include <SDL_syswm.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_syswm.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -168,20 +168,20 @@ static int MatchJoyCommand(const SDL_Event *event, eJoyCommand cmd)
     char tokenized_event_str[128];
     strncpy(tokenized_event_str, multi_event_str, 127);
     tokenized_event_str[127] = '\0';
-    
+
     /* Iterate over comma-separated config phrases */
     char *phrase_str = strtok(tokenized_event_str, ",");
     while (phrase_str != NULL)
     {
         int iHotkey, has_hotkey = 0;
-        
+
         /* Check for invalid phrase */
         if (strlen(phrase_str) < 4 || phrase_str[0] != 'J')
         {
             phrase_str = strtok(NULL, ",");
             continue;
         }
-        
+
         /* Get device (joystick) number */
         if (phrase_str[1] == '*')
         {
@@ -278,7 +278,7 @@ static int MatchJoyCommand(const SDL_Event *event, eJoyCommand cmd)
                     break;
             }
         } /* Iterate over JoyAction/JoyHotkey action fields */
-        
+
         /* Detect changes in command activation status */
         const int new_cmd_value = (JoyCmdActive[cmd][1] << 1) | JoyCmdActive[cmd][0];
         const int active_mask = has_hotkey ? 3 : 1;
@@ -486,7 +486,7 @@ void event_initialize(void)
                         SDL_JoystickOpen(device);
 #endif
                 }
-                
+
                 phrase_str = strtok(NULL, ",");
             } /* Iterate over comma-separated config phrases */
         }
@@ -497,7 +497,7 @@ void event_initialize(void)
     SDL_EnableKeyRepeat(0, 0);
 #endif
     SDL_SetEventFilter(event_sdl_filter, NULL);
-    
+
 #if defined(WIN32) && !SDL_VERSION_ATLEAST(1,3,0)
     SDL_EventState(SDL_SYSWMEVENT, SDL_ENABLE);
 

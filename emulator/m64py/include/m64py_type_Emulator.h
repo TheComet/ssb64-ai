@@ -4,6 +4,7 @@
 #include "Python.h"
 #include "osal_dynamiclib.h"
 #include "m64p_frontend.h"
+#include "m64p_debugger.h"
 
 #define m64py_EmulatorType_CheckExact(op) \
     (Py_TYPE(op) == &m64py_EmulatorType)
@@ -13,7 +14,8 @@
     X(CoreShutdown) \
     X(CoreAttachPlugin) \
     X(CoreDetachPlugin) \
-    X(CoreDoCommand)
+    X(CoreDoCommand) \
+    X(DebugMemRead32)
 
 typedef struct m64py_Emulator_corelib_interface
 {

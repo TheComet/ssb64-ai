@@ -23,6 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 #include "m64p_types.h"
 #include "osal_dynamiclib.h"
@@ -62,4 +63,7 @@ m64p_error osal_dynlib_close(m64p_dynlib_handle LibHandle)
     return M64ERR_SUCCESS;
 }
 
-
+const char* osal_dynlib_last_error(void)
+{
+    return dlerror();
+}

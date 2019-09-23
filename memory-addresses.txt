@@ -1,0 +1,30 @@
+Player 1
+========
+0x80267F14	u32	state1
+0x80267F18	u32	state2 (different representation? Turns to 0xFFFFFFFF if shield is pressed, during up-b startup, when dying, and when grabbed. Seems to always be state1 - 6)
+0x80267F1C	u32	damage (percentage)
+0x80267F24	u32	shield health
+0x80267F34	i32	facing direction (-1 for left, 1 for right)
+0x80267F38	float	speed_x
+0x80267F3C	float	speed_y
+0x80267F44	float	launch_speed_x
+0x80267F48	float	launch_speed_y
+0x80267F50	float	speed_x_abs (absolute value of speed_x, but only when on ground)
+0x80267F70	float	X position
+0x80267F74	float	Y position
+0x80267F7C	float	horizontal_speed2 (related to launch speed somehow)
+0x80267F80	float	vertical_speed2 (related to launch speed somehow)
+0x80268954	u32	flags? 3=on ledge and invincible, 11=on respawn platform, 10=respawn invincibility, 4=throw invincibility, 57=up b invincibility
+
+Player 2
+========
+0x80268A64	u32	state1
+(same offsets)
+
+Stage
+======
+0x80304BFC	float	whispy blowing (1.0 if blowing, 0.0 if not)
+
+Currently unknown:
+- Invincibility
+- Animation counter

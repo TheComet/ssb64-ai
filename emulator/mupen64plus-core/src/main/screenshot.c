@@ -19,7 +19,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 #include <ctype.h>
 #include <png.h>
 #include <setjmp.h>
@@ -142,7 +142,7 @@ static char *GetNextScreenshotPath(void)
     for (pch = ScreenshotFileName; *pch != '\0'; pch++)
         *pch = ((*pch == ' ') || (*pch == ':')) ? '_' : tolower(*pch);
     strcat(ScreenshotFileName, "-###.png");
-    
+
     // add the base path to the screenshot file name
     const char *SshotDir = ConfigGetParamString(g_CoreConfig, "ScreenshotPath");
     if (SshotDir == NULL || *SshotDir == '\0')

@@ -379,7 +379,7 @@ static m64p_error write_configlist_file(void)
     if (filepath == NULL)
         return M64ERR_NO_MEMORY;
 
-    fPtr = fopen(filepath, "wb"); 
+    fPtr = fopen(filepath, "wb");
     if (fPtr == NULL)
     {
         DebugMessage(M64MSG_ERROR, "Couldn't open configuration file '%s' for writing.", filepath);

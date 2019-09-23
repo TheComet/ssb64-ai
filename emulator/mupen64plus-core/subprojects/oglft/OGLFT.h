@@ -30,7 +30,7 @@
 #include <vector>
 
 #define GL_GLEXT_PROTOTYPES
-#include <SDL_opengl.h>
+#include <SDL2/SDL_opengl.h>
 #if defined(__MACOSX__)
 #include <OpenGL/glu.h>
 #elif defined(__MACOS__)
@@ -46,14 +46,14 @@
 #include FT_OUTLINE_H
 #include FT_TRIGONOMETRY_H
 
-namespace OGLFT 
+namespace OGLFT
 {
-    enum Coordinates 
+    enum Coordinates
     {
         X, Y, Z, W
     };
 
-    enum ColorSpace 
+    enum ColorSpace
     {
         R, G, B, A
     };
@@ -62,7 +62,7 @@ namespace OGLFT
     bool Init_FT(void);
     bool Uninit_FT(void);
 
-    struct Advance 
+    struct Advance
     {
         float dx_;
         float dy_;
@@ -86,7 +86,7 @@ namespace OGLFT
         }
     };
 
-    struct BBox 
+    struct BBox
     {
         float x_min_;
         float y_min_;
@@ -138,10 +138,10 @@ namespace OGLFT
     typedef std::vector<GLuint> DisplayLists;
     typedef DisplayLists::const_iterator DLCI;
     typedef DisplayLists::iterator DLI;
-    class Face 
+    class Face
     {
         public:
-            enum HorizontalJustification 
+            enum HorizontalJustification
             {
                 LEFT,
                 ORIGIN,
@@ -149,22 +149,22 @@ namespace OGLFT
                 RIGHT
             };
 
-            enum VerticalJustification 
+            enum VerticalJustification
             {
                 BOTTOM,
                 BASELINE,
                 MIDDLE,
                 TOP
             };
-            
-            enum GlyphCompileMode 
+
+            enum GlyphCompileMode
             {
                 COMPILE,
                 IMMEDIATE
             };
 
         private:
-            struct FaceData 
+            struct FaceData
             {
                 FT_Face face_;
                 bool free_on_exit_;
@@ -174,7 +174,7 @@ namespace OGLFT
                     return;
                 }
             };
-            
+
         protected:
             std::vector< FaceData > faces_;
             bool valid_;
@@ -278,7 +278,7 @@ namespace OGLFT
             void init ( void );
     };
 
-    class Raster : public Face 
+    class Raster : public Face
     {
         protected:
             GLfloat character_rotation_z_;

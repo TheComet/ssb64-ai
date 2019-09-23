@@ -20,7 +20,7 @@
  *   51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.          *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 
-#include <SDL.h>
+#include <SDL2/SDL.h>
 
 #include "api/callbacks.h"
 #include "api/debugger.h"
@@ -51,7 +51,7 @@ void init_debugger()
         DebugMessage(M64MSG_WARNING, "Front-end debugger callbacks are not set, so debugger will remain disabled.");
         return;
     }
-    
+
     g_DebuggerActive = 1;
     g_dbg_runstate = M64P_DBG_RUNSTATE_PAUSED;
 

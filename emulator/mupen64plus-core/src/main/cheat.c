@@ -22,8 +22,8 @@
 
 /* gameshark and xploder64 reference: http://doc.kodewerx.net/hacking_n64.html */
 
-#include <SDL.h>
-#include <SDL_thread.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_thread.h>
 
 #define __STDC_FORMAT_MACROS
 #include <inttypes.h>

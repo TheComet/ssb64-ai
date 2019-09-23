@@ -21,8 +21,8 @@
 
 #include "workqueue.h"
 
-#include <SDL.h>
-#include <SDL_thread.h>
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_thread.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>

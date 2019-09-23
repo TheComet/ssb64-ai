@@ -153,9 +153,24 @@ read_player_position(PyObject* self, PyObject* arg)
 #define READ_PLAYER_ORIENTATION_DOC \
 "-> int: -1=facing left, 1=facing right"
 static PyObject*
-read_player_orientation(PyObject* self, PyObject* arg)
+read_player_orientation(m64py_SSB64* self, PyObject* arg)
 {
-    return PyLong_FromLong(-1);
+    int player_idx;
+
+    if (!PyLong_Check(arg))
+    {
+        PyErr_SetString(PyExc_TypeError, "Expected player index [0-3] as an integer");
+        return NULL;
+    }
+    player_idx = PyLong_AS_LONG(arg);
+    if (player_idx < 0 || player_idx > 3)
+    {
+        PyErr_Format(PyExc_ValueError, "Player index is out of bounds (%d)", player_idx);
+        return NULL;
+    }
+
+    int direction_facing = self->emu->corelib.DebugMemRead32(0x80267F34);
+    return PyLong_FromLong(direction_facing);
 }
 
 /* ------------------------------------------------------------------------- */
@@ -205,18 +220,18 @@ read_whispy_wind(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef SSB64_methods[] = {
-    {"set_tournament_rules",      set_tournament_rules,      METH_NOARGS, ""},
-    {"set_character",             set_character,             METH_VARARGS, ""},
-    {"set_stage",                 set_stage,                 METH_O, ""},
-    {"start_game",                start_game,                METH_NOARGS, ""},
-    {"is_running",                is_running,                METH_NOARGS, ""},
-    {"read_player_position",      read_player_position,      METH_O, READ_PLAYER_POSITION_DOC},
-    {"read_player_orientation",   read_player_orientation,   METH_O, READ_PLAYER_ORIENTATION_DOC},
-    {"read_player_anim_state",    read_player_anim_state,    METH_O, READ_PLAYER_ANIM_STATE_DOC},
-    {"read_player_anim_progress", read_player_anim_progress, METH_O, READ_PLAYER_ANIM_PROGRESS_DOC},
-    {"read_player_shield_health", read_player_shield_health, METH_O, READ_PLAYER_SHIELD_HEALTH_DOC},
-    {"read_player_damage",        read_player_damage,        METH_O, READ_PLAYER_DAMAGE_DOC},
-    {"read_whispy_wind",          read_whispy_wind,          METH_NOARGS, READ_WHISPY_WIND_DOC},
+    {"set_tournament_rules",      set_tournament_rules,                   METH_NOARGS, ""},
+    {"set_character",             set_character,                          METH_VARARGS, ""},
+    {"set_stage",                 set_stage,                              METH_O, ""},
+    {"start_game",                start_game,                             METH_NOARGS, ""},
+    {"is_running",                is_running,                             METH_NOARGS, ""},
+    {"read_player_position",      read_player_position,                   METH_O, READ_PLAYER_POSITION_DOC},
+    {"read_player_orientation",   (PyCFunction)read_player_orientation,   METH_O, READ_PLAYER_ORIENTATION_DOC},
+    {"read_player_anim_state",    read_player_anim_state,                 METH_O, READ_PLAYER_ANIM_STATE_DOC},
+    {"read_player_anim_progress", read_player_anim_progress,              METH_O, READ_PLAYER_ANIM_PROGRESS_DOC},
+    {"read_player_shield_health", read_player_shield_health,              METH_O, READ_PLAYER_SHIELD_HEALTH_DOC},
+    {"read_player_damage",        read_player_damage,                     METH_O, READ_PLAYER_DAMAGE_DOC},
+    {"read_whispy_wind",          read_whispy_wind,                       METH_NOARGS, READ_WHISPY_WIND_DOC},
     {NULL}
 };
 

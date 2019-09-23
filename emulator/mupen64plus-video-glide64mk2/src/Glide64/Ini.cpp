@@ -14,7 +14,7 @@
 *
 *   You should have received a copy of the GNU General Public
 *   Licence along with this program; if not, write to the Free
-*   Software Foundation, Inc., 51 Franklin Street, Fifth Floor, 
+*   Software Foundation, Inc., 51 Franklin Street, Fifth Floor,
 *   Boston, MA  02110-1301, USA
 */
 
@@ -132,7 +132,7 @@ int Ini::Read(const char *key, int defaultVal)
 BOOL INI_Open ()
 {
 	//TODO: use ConfigGetSharedDataFilepath
-	
+
     // Get the path of the dll, ex: C:\Games\Project64\Plugin\Glide64.dll
     char path[PATH_MAX];
     if(strlen(configdir) > 0)
@@ -157,7 +157,7 @@ BOOL INI_Open ()
      {
     char path2[PATH_MAX];
     int i;
-    
+
     path[n] = '\0';
     strcpy(path2, path);
     for (i=strlen(path2)-1; i>0; i--)
@@ -170,7 +170,7 @@ BOOL INI_Open ()
          DIR *dir;
          struct dirent *entry;
          int gooddir = 0;
-         
+
          path2[i+1] = '\0';
          dir = opendir(path2);
          while((entry = readdir(dir)) != NULL)
@@ -203,9 +203,10 @@ BOOL INI_Open ()
    strcat(path, "plugins/");
 #endif // _WIN32
     }
-   
+
     //strncat (path, "Glide64mk2.ini", PATH_MAX - strlen(path));
     LOG("opening %s\n", path);
+    printf("opening %s\n", path);
     // Open the file
     ini = fopen (path, "rb");
     if (ini == NULL)

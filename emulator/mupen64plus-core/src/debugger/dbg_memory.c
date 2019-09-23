@@ -346,7 +346,7 @@ void write_memory_8(struct device* dev, uint32_t addr, uint8_t value)
 
     mask = 0xFF << ((3 - (addr & 3)) * 8);
     word = value << ((3 - (addr & 3)) * 8);
-    
+
     r4300_write_aligned_word(&dev->r4300, addr, word, mask);
 }
 

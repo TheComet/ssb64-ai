@@ -30,5 +30,7 @@ void *     osal_dynlib_getproc(m64p_dynlib_handle LibHandle, const char *pccProc
 
 m64p_error osal_dynlib_close(m64p_dynlib_handle LibHandle);
 
+const char* osal_dynlib_last_error(void);
+
 #endif /* #define OSAL_DYNAMICLIB_H */
 

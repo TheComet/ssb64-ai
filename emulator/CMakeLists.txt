@@ -10,6 +10,8 @@ endif ()
 # Build all mupen libs
 ###############################################################################
 
+add_subdirectory ("mupen64plus-core")
+
 function (build_mupen_component NAME)
     set (ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
     file (GLOB_RECURSE SOURCES "${ROOT_DIR}/src/*.c" "${ROOT_DIR}/src/*.cpp")
@@ -27,7 +29,7 @@ function (build_mupen_component NAME)
         set (OUTPUT_LIB_FILE "${ROOT_DIR}/projects/unix/${LIBNAME}")
         set (FINAL_LIB_FILE ${CMAKE_BINARY_DIR}/${LIBNAME})
         add_custom_command (OUTPUT ${FINAL_LIB_FILE}
-            COMMAND make ARGS all -j
+            COMMAND make ARGS all -j DEBUGGER=1 DBG=1
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OUTPUT_LIB_FILE} ${FINAL_LIB_FILE}
             WORKING_DIRECTORY "${ROOT_DIR}/projects/unix"
             DEPENDS ${SOURCES} ${HEADERS}
@@ -40,7 +42,7 @@ function (build_mupen_component NAME)
 endfunction ()
 
 set (MUPEN_COMPONENTS
-    mupen64plus-core
+    #mupen64plus-core
     #mupen64plus-ai
     mupen64plus-audio-sdl
     mupen64plus-input-sdl

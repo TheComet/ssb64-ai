@@ -139,8 +139,11 @@ Emulator_dealloc(m64py_Emulator* self)
     Py_XDECREF(self->video_plugin);
     Py_XDECREF(self->rsp_plugin);
 
-    self->corelib.CoreShutdown();
-    osal_dynlib_close(self->corelib.handle);
+    if (self->corelib.handle)
+    {
+        self->corelib.CoreShutdown();
+        osal_dynlib_close(self->corelib.handle);
+    }
     g_emu = 0;
 
     Py_TYPE(self)->tp_free((PyObject*)self);
@@ -170,14 +173,16 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "sss", kwds_str, &corelib_path, &config_path, &data_path))
         return NULL;
 
+    printf("config_path: %s\ndata_path: %s\n", config_path, data_path);
+
     g_emu = (m64py_Emulator*)type->tp_alloc(type, 0);
     if (g_emu == NULL)
         goto alloc_self_failed;
 
     /* Try to load mupen64plus corelib */
-    if (osal_dynlib_open(&g_emu->corelib.handle, corelib_path) != M64ERR_SUCCESS)
+    if ((result = osal_dynlib_open(&g_emu->corelib.handle, corelib_path) != M64ERR_SUCCESS))
     {
-        PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\"", corelib_path);
+        PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\": %s", corelib_path, osal_dynlib_last_error());
         goto open_corelib_failed;
     }
 
@@ -388,7 +393,7 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
 
     if (value == NULL)
     {
-        PyErr_SetString(PyExc_TypeError, "Cannot delete input plugin attribute");
+        PyErr_SetString(PyExc_TypeError, "Cannot delete plugin attribute");
         return -1;
     }
 
