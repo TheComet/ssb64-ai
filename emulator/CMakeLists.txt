@@ -63,7 +63,9 @@ endforeach ()
 
 add_library (m64py SHARED
     "m64py/src/m64py.c"
+    "m64py/src/m64py_ssb64_memory.c"
     "m64py/src/m64py_type_Emulator.c"
+    "m64py/src/m64py_type_Fighter.c"
     "m64py/src/m64py_type_Plugin.c"
     "m64py/src/m64py_type_SSB64.c"
     $<$<PLATFORM_ID:Linux>:m64py/src/osal_dynamiclib_unix.c>

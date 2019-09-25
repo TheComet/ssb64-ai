@@ -1,121 +1,8 @@
 #include "m64py_type_SSB64.h"
-
-#define M64P_CORE_PROTOTYPES
+#include "m64py_ssb64_memory.h"
 
 #include <stdint.h>
 #include <stdio.h>
-
-enum regions_e
-{
-    REGION_JAPAN,
-    REGION_AUSTRALIA,
-    REGION_EUROPE,
-    REGION_USA,
-    REGION_IQUE
-};
-static const struct memory_t
-{
-    uint32_t MUSIC;
-    uint32_t UNLOCKED_STUFF;
-    uint32_t MATCH_SETTINGS_PTR;
-    uint32_t HURTBOX_COLOR_RG;
-    uint32_t HURTBOX_COLOR_BA;
-    uint32_t RED_HITBOX_PATCH;
-    uint32_t PURPLE_HITBOX_PATCH;
-    uint32_t PLAYER_LIST_PTR;
-    uint32_t ITEM_LIST_PTR;
-    uint32_t ITEM_HITBOX_OFFSET;
-} MEMORY[] = {
-    {0x8098BD3, 0x80A28F4, 0x80A30A8, 0,       0,       0,       0,       0x8012E914, 0x80466F0, 0x370},  /* Japan */
-    {0x8099833, 0x80A5074, 0x80A5828, 0,       0,       0,       0,       0x80131594, 0x8046E20, 0    },  /* Australia */
-    {0x80A2E63, 0x80AD194, 0x80AD948, 0,       0,       0,       0,       0x80139A74, 0x8046E60, 0    },  /* Europe */
-    {0x8099113, 0x80A4934, 0x80A50E8, 0xF2786, 0xF279E, 0xF33BC, 0xF2FD0, 0x80130D84, 0x8046700, 0x374},  /* USA */
-    {0x8092993, 0x80A4988, 0x80A5C68, 0,       0,       0,       0,       0x80130F04, 0x8098450, 0x374}   /* iQue */
-};
-
-static const struct player_field_t
-{
-    uint32_t CHARACTER;
-    uint32_t COSTUME;
-    uint32_t MOVEMENT_FRAME;
-    uint32_t MOVEMENT_STATE;
-    uint32_t PERCENT;
-    uint32_t SHIELD_SIZE;
-    uint32_t FACING_DIRECTION;
-    uint32_t VELOCITY_X;
-    uint32_t VELOCITY_Y;
-    uint32_t ACCELERATION_X;
-    uint32_t ACCELERATION_Y;
-    uint32_t POSITION_VECTOR_PTR;
-    struct player_position_data_t {
-        uint32_t POS_X;
-        uint32_t POS_Y;
-    } POSITION_VECTOR;
-    uint32_t JUMP_COUNTER;
-    uint32_t GROUNDED;
-    uint32_t CONTROLLER_INPUT_PTR;
-    uint32_t SHIELD_BREAK_RECOVERY_TIME;
-    uint32_t INVINCIBILITY_STATE;
-    /* a bunch more stuff we probably don't care about */
-    uint32_t SHOW_HITBOX;
-} PLAYER_FIELD = {
-    .CHARACTER                  = 0x0B,
-    .COSTUME                    = 0x10,
-    .MOVEMENT_FRAME             = 0x1C,
-    .MOVEMENT_STATE             = 0x26,
-    .PERCENT                    = 0x2C,
-    .SHIELD_SIZE                = 0x34,
-    .FACING_DIRECTION           = 0x44,
-    .VELOCITY_X                 = 0x48,
-    .VELOCITY_Y                 = 0x4C,
-    .ACCELERATION_X             = 0x60,
-    .ACCELERATION_Y             = 0x64,
-    .POSITION_VECTOR_PTR        = 0x78,
-    .POSITION_VECTOR = {
-        .POS_X                  = 0x00,
-        .POS_Y                  = 0x04
-    },
-    .JUMP_COUNTER               = 0x148,
-    .GROUNDED                   = 0x14C,
-    .CONTROLLER_INPUT_PTR       = 0x1B0,
-    .SHIELD_BREAK_RECOVERY_TIME = 0x26C,
-    .INVINCIBILITY_STATE        = 0x5AC,
-    .SHOW_HITBOX                = 0xB4C
-};
-
-/*
-enum player_base_addresses_e
-{
-    BA_PEACHS_CASTLE   = 0x8025E174,
-    BA_CONGO_JUNGLE    = 0x8026AEA4,
-    BA_HYRULE_CASTLE   = 0x80262F34,
-    BA_PLANET_ZEBES    = 0x8026A37C,
-    BA_YOSHIS_ISLAND   = 0x8026D7FC,
-    BA_DREAMLAND       = 0x80267F14,
-    BA_SECTOR_Z        = 0x8026B4CC,
-    BA_SAFFRON_CITY    = 0x8026DE6C
-};
-*/
-/*
-enum player_offsets_e
-{
-    OFF_STATE1      = 0x00,
-    OFF_STATE2      = 0x04,
-    OFF_PERCENT     = 0x08,
-    OFF_SHIELD      = 0x10,
-    OFF_ORIENTATION = 0x20,
-    OFF_SPEED_X     = 0x24,
-    OFF_SPEED_Y     = 0x28,
-    OFF_LAUNCH_X    = 0x30,
-    OFF_LAUNCH_Y    = 0x34,
-    OFF_SPEED_X_ABS = 0x3C,
-    OFF_POS_X       = 0x5C,
-    OFF_POS_Y       = 0x60,
-    OFF_FLAGS       = 0xA40
-};*/
-
-static const unsigned int ADDR_STOCK_COUNTERS = 0x801317CC;
-static const unsigned int ADDR_WHISPY_BLOWING = 0x80304BFC;
 
 /* ------------------------------------------------------------------------- */
 static void
@@ -129,6 +16,11 @@ SSB64_dealloc(m64py_SSB64* self)
 }
 
 /* ------------------------------------------------------------------------- */
+static char* kwds_strings[] = {
+    "emulator",
+    "rom_file_name",
+    NULL
+};
 static PyObject*
 SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
@@ -143,7 +35,7 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     if (self == NULL)
         goto alloc_self_failed;
 
-    if (!PyArg_ParseTuple(args, "O!s", &m64py_EmulatorType, &self->emu, &rom_file_name))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!s", kwds_strings, &m64py_EmulatorType, &self->emu, &rom_file_name))
         goto parse_args_failed;
     Py_INCREF(self->emu);
 
@@ -181,6 +73,11 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         goto read_rom_failed;
     }
 
+    /* TODO: Figure out region from loaded ROM. For now just assume USA */
+    self->mem_iface = m64py_memory_interface_create(&self->emu->corelib, REGION_USA);
+    if (self->mem_iface == NULL)
+        goto alloc_memory_interface_failed;
+
     /* With ROM successfully loaded, we can now start all plugins */
     if (m64py_Emulator_start_plugins(self->emu) != 0)
         goto start_plugins_failed;
@@ -192,45 +89,47 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     self->emu->is_rom_loaded = 1;
     return (PyObject*)self;
 
-    start_plugins_failed     : self->emu->corelib.CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
-    read_rom_failed          : free(rom_buffer);
-    malloc_rom_buffer_failed : fclose(rom_file);
-    open_rom_file_failed     :
-    parse_args_failed        : Py_DECREF(self);
-    alloc_self_failed        : return NULL;
+    start_plugins_failed          : m64py_memory_interface_destroy(self->mem_iface);
+    alloc_memory_interface_failed : self->emu->corelib.CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
+    read_rom_failed               : free(rom_buffer);
+    malloc_rom_buffer_failed      : fclose(rom_file);
+    open_rom_file_failed          :
+    parse_args_failed             : Py_DECREF(self);
+    alloc_self_failed             : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_tournament_rules(PyObject* self, PyObject* arg)
+set_tournament_rules(m64py_Emulator* self, PyObject* arg)
+{
+    m64py_memory_set_tournament_rules(&self->corelib);
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+static PyObject*
+set_character(m64py_Emulator* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_character(PyObject* self, PyObject* arg)
+set_stage(m64py_Emulator* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-set_stage(PyObject* self, PyObject* arg)
+start_game(m64py_Emulator* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-start_game(PyObject* self, PyObject* arg)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-is_running(PyObject* self, PyObject* arg)
+is_running(m64py_Emulator* self, PyObject* arg)
 {
     Py_RETURN_TRUE;
 }
