@@ -5,14 +5,98 @@
 #include <stdint.h>
 #include <stdio.h>
 
-/* NOTE: Only valid on Dreamland */
-static const unsigned int ADDR_DREAMLAND_PLAYER[4] = {
-    0x80267F14,
-    0x80268A64,
-    0x0, /* currently unknown */
-    0x0  /* currently unknown */
+enum regions_e
+{
+    REGION_JAPAN,
+    REGION_AUSTRALIA,
+    REGION_EUROPE,
+    REGION_USA,
+    REGION_IQUE
+};
+static const struct memory_t
+{
+    uint32_t MUSIC;
+    uint32_t UNLOCKED_STUFF;
+    uint32_t MATCH_SETTINGS_PTR;
+    uint32_t HURTBOX_COLOR_RG;
+    uint32_t HURTBOX_COLOR_BA;
+    uint32_t RED_HITBOX_PATCH;
+    uint32_t PURPLE_HITBOX_PATCH;
+    uint32_t PLAYER_LIST_PTR;
+    uint32_t ITEM_LIST_PTR;
+    uint32_t ITEM_HITBOX_OFFSET;
+} MEMORY[] = {
+    {0x8098BD3, 0x80A28F4, 0x80A30A8, 0,       0,       0,       0,       0x8012E914, 0x80466F0, 0x370},  /* Japan */
+    {0x8099833, 0x80A5074, 0x80A5828, 0,       0,       0,       0,       0x80131594, 0x8046E20, 0    },  /* Australia */
+    {0x80A2E63, 0x80AD194, 0x80AD948, 0,       0,       0,       0,       0x80139A74, 0x8046E60, 0    },  /* Europe */
+    {0x8099113, 0x80A4934, 0x80A50E8, 0xF2786, 0xF279E, 0xF33BC, 0xF2FD0, 0x80130D84, 0x8046700, 0x374},  /* USA */
+    {0x8092993, 0x80A4988, 0x80A5C68, 0,       0,       0,       0,       0x80130F04, 0x8098450, 0x374}   /* iQue */
 };
 
+static const struct player_field_t
+{
+    uint32_t CHARACTER;
+    uint32_t COSTUME;
+    uint32_t MOVEMENT_FRAME;
+    uint32_t MOVEMENT_STATE;
+    uint32_t PERCENT;
+    uint32_t SHIELD_SIZE;
+    uint32_t FACING_DIRECTION;
+    uint32_t VELOCITY_X;
+    uint32_t VELOCITY_Y;
+    uint32_t ACCELERATION_X;
+    uint32_t ACCELERATION_Y;
+    uint32_t POSITION_VECTOR_PTR;
+    struct player_position_data_t {
+        uint32_t POS_X;
+        uint32_t POS_Y;
+    } POSITION_VECTOR;
+    uint32_t JUMP_COUNTER;
+    uint32_t GROUNDED;
+    uint32_t CONTROLLER_INPUT_PTR;
+    uint32_t SHIELD_BREAK_RECOVERY_TIME;
+    uint32_t INVINCIBILITY_STATE;
+    /* a bunch more stuff we probably don't care about */
+    uint32_t SHOW_HITBOX;
+} PLAYER_FIELD = {
+    .CHARACTER                  = 0x0B,
+    .COSTUME                    = 0x10,
+    .MOVEMENT_FRAME             = 0x1C,
+    .MOVEMENT_STATE             = 0x26,
+    .PERCENT                    = 0x2C,
+    .SHIELD_SIZE                = 0x34,
+    .FACING_DIRECTION           = 0x44,
+    .VELOCITY_X                 = 0x48,
+    .VELOCITY_Y                 = 0x4C,
+    .ACCELERATION_X             = 0x60,
+    .ACCELERATION_Y             = 0x64,
+    .POSITION_VECTOR_PTR        = 0x78,
+    .POSITION_VECTOR = {
+        .POS_X                  = 0x00,
+        .POS_Y                  = 0x04
+    },
+    .JUMP_COUNTER               = 0x148,
+    .GROUNDED                   = 0x14C,
+    .CONTROLLER_INPUT_PTR       = 0x1B0,
+    .SHIELD_BREAK_RECOVERY_TIME = 0x26C,
+    .INVINCIBILITY_STATE        = 0x5AC,
+    .SHOW_HITBOX                = 0xB4C
+};
+
+/*
+enum player_base_addresses_e
+{
+    BA_PEACHS_CASTLE   = 0x8025E174,
+    BA_CONGO_JUNGLE    = 0x8026AEA4,
+    BA_HYRULE_CASTLE   = 0x80262F34,
+    BA_PLANET_ZEBES    = 0x8026A37C,
+    BA_YOSHIS_ISLAND   = 0x8026D7FC,
+    BA_DREAMLAND       = 0x80267F14,
+    BA_SECTOR_Z        = 0x8026B4CC,
+    BA_SAFFRON_CITY    = 0x8026DE6C
+};
+*/
+/*
 enum player_offsets_e
 {
     OFF_STATE1      = 0x00,
@@ -27,9 +111,10 @@ enum player_offsets_e
     OFF_SPEED_X_ABS = 0x3C,
     OFF_POS_X       = 0x5C,
     OFF_POS_Y       = 0x60,
+    OFF_FLAGS       = 0xA40
+};*/
 
-};
-
+static const unsigned int ADDR_STOCK_COUNTERS = 0x801317CC;
 static const unsigned int ADDR_WHISPY_BLOWING = 0x80304BFC;
 
 /* ------------------------------------------------------------------------- */
@@ -178,21 +263,34 @@ read_player_position(m64py_SSB64* self, PyObject* arg)
 {
     PyObject *py_xpos, *py_ypos, *args;
     int player_idx;
-    unsigned int xpos_address, ypos_address, xpos_int, ypos_int;
+    unsigned int player_base_addr, pos_vec_address, xpos_raw, ypos_raw;
     float xpos, ypos;
 
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
 
-    xpos_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_POS_X;
-    ypos_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_POS_Y;
-    xpos_int = self->emu->corelib.DebugMemRead32(xpos_address);
-    ypos_int = self->emu->corelib.DebugMemRead32(ypos_address);
+    player_base_addr = self->emu->corelib.DebugMemRead32(MEMORY[REGION_USA].PLAYER_LIST_PTR);
+    if (player_base_addr == 0x0)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Player structures haven't been allocated yet");
+        return NULL;
+    }
+    player_base_addr += 0xB50 * player_idx;  /* sizeof(Fighter) * player_idx */
+
+    pos_vec_address = self->emu->corelib.DebugMemRead32(player_base_addr + PLAYER_FIELD.POSITION_VECTOR_PTR);
+    if (pos_vec_address == 0x0)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Player position is NULL");
+        return NULL;
+    }
+
+    xpos_raw = self->emu->corelib.DebugMemRead32(pos_vec_address + PLAYER_FIELD.POSITION_VECTOR.POS_X);
+    ypos_raw = self->emu->corelib.DebugMemRead32(pos_vec_address + PLAYER_FIELD.POSITION_VECTOR.POS_X);
 
     /* It is a ieee754 float, hopefully this never gets compiled on a computer
      * that has a different fp implementation */
-    xpos = *(float*)&xpos_int;
-    ypos = *(float*)&ypos_int;
+    xpos = *(float*)&xpos_raw;
+    ypos = *(float*)&ypos_raw;
 
     if ((py_xpos = PyFloat_FromDouble(xpos)) == NULL)
         goto alloc_xpos_failed;
@@ -223,11 +321,11 @@ read_player_launch_velocity(m64py_SSB64* self, PyObject* arg)
 
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-
+/*
     xlaunch_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_LAUNCH_X;
     ylaunch_address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_LAUNCH_Y;
     xlaunch_int = self->emu->corelib.DebugMemRead32(xlaunch_address);
-    ylaunch_int = self->emu->corelib.DebugMemRead32(ylaunch_address);
+    ylaunch_int = self->emu->corelib.DebugMemRead32(ylaunch_address);*/
 
     /* It is a ieee754 float, hopefully this never gets compiled on a computer
      * that has a different fp implementation */
@@ -260,9 +358,9 @@ read_player_orientation(m64py_SSB64* self, PyObject* arg)
     unsigned int address;
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-
+/*
     address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_ORIENTATION;
-    orientation = self->emu->corelib.DebugMemRead32(address);
+    orientation = self->emu->corelib.DebugMemRead32(address);*/
 
     return PyLong_FromLong(orientation);
 }
@@ -277,9 +375,9 @@ read_player_anim_state(m64py_SSB64* self, PyObject* arg)
     unsigned int address, state;
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-
+/*
     address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_STATE1;
-    state = self->emu->corelib.DebugMemRead32(address);
+    state = self->emu->corelib.DebugMemRead32(address);*/
 
     return PyLong_FromLong(state);
 }
@@ -303,9 +401,9 @@ read_player_shield_health(m64py_SSB64* self, PyObject* arg)
     unsigned int address, shield;
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-
+/*
     address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_SHIELD;
-    shield = self->emu->corelib.DebugMemRead32(address);
+    shield = self->emu->corelib.DebugMemRead32(address);*/
 
     return PyLong_FromLong(shield);
 }
@@ -320,9 +418,9 @@ read_player_damage(m64py_SSB64* self, PyObject* arg)
     unsigned int address, percent;
     if ((player_idx = parse_player_idx(arg)) < 0)
         return NULL;
-
+/*
     address = ADDR_DREAMLAND_PLAYER[player_idx] + OFF_PERCENT;
-    percent = self->emu->corelib.DebugMemRead32(address);
+    percent = self->emu->corelib.DebugMemRead32(address);*/
 
     return PyLong_FromLong(percent);
 }

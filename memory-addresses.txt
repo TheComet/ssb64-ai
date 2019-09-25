@@ -1,10 +1,10 @@
-Player 1
-========
-0x80267F14	u32	state1
-0x80267F18	u32	state2 (different representation? Turns to 0xFFFFFFFF if shield is pressed, during up-b startup, when dying, and when grabbed. Seems to always be state1 - 6)
-0x80267F1C	u32	damage (percentage)
-0x80267F24	u32	shield health
-0x80267F34	i32	facing direction (-1 for left, 1 for right)
+Dreamland Player Data
+=====================
+0x80267F14	u32     state1
+0x80267F18	u32	    state2 (different representation? Turns to 0xFFFFFFFF if shield is pressed, during up-b startup, when dying, and when grabbed. Seems to always be state1 - 6)
+0x80267F1C	u32	    damage (percentage)
+0x80267F24	u32	    shield health
+0x80267F34	i32	    facing direction (-1 for left, 1 for right)
 0x80267F38	float	speed_x
 0x80267F3C	float	speed_y
 0x80267F44	float	launch_speed_x
@@ -16,10 +16,17 @@ Player 1
 0x80267F80	float	vertical_speed2 (related to launch speed somehow)
 0x80268954	u32	flags? 3=on ledge and invincible, 11=on respawn platform, 10=respawn invincibility, 4=throw invincibility, 57=up b invincibility
 
-Player 2
-========
-0x80268A64	u32	state1
-(same offsets)
+Player data is evenly spaced by 0xB50 bytes in the order P1, P2, P3, P4. If e.g. P1 and P3 are active, then P1 and P3 will be 0xB50 bytes apart.
+
+Peach's Castle	0x8025E174
+Congo Jungle	0x8026AEA4
+Hyrule Castle	0x80262F34
+Planet Zebes	0x8026A37C
+Yoshi's Island	0x8026D7FC
+Sector Z	    0x8026B4CC
+Saffron City	0x8026DE6C
+
+Stocks of all players (1 byte for each player): 0x801317CC -- doesn't change when stage is changed
 
 Stage
 ======
