@@ -15,32 +15,55 @@ emu.audio_plugin = "./mupen64plus-audio-sdl.so"
 emu.video_plugin = "./mupen64plus-video-glide64mk2.so"
 
 game = emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
-game.set_tournament_rules()
-game.set_character(0, m64py.PIKACHU)
-game.set_character(1, m64py.PIKACHU)
-game.set_character(2, m64py.PIKACHU)
-game.set_character(3, None)
-game.set_stage(m64py.DREAMLAND)
+
+def menu_screen(frame):
+    game.set_fighters(Fighter.PIKACHU, None, Fighter.PIKACHU, None)
+    game.set_stage(Stage.DREAMLAND)
+    game.start_match()
+
+def match_screen(frame):
+    print(f"Frame {frame} game state:")
+
+    # Print out fighter related state
+    for fighter_idx in range(0, 1):
+        fighter = game.get_fighter(fighter_idx)
+        ID = fighter_idx*2+1
+        print(f"  P{ID} x, y           : {fighter.position}")
+        print(f"  P{ID} vx, vy         : {fighter.velocity}")
+        print(f"  P{ID} ax, ay         : {fighter.acceleration}")
+        print(f"  P{ID} orientation    : {fighter.orientation}")
+        print(f"  P{ID} movement frame : {fighter.movement_frame}")
+        print(f"  P{ID} movement state : {fighter.movement_state}")
+        print(f"  P{ID} shield         : {fighter.shield_health}")
+        print(f"  P{ID} shield recover : {fighter.shield_break_recovery_timer}")
+        print(f"  P{ID} percent        : {fighter.percent}%")
+        print(f"  P{ID} is grounded    : {fighter.is_grounded}")
+        print(f"  P{ID} is invincible  : {fighter.is_invincible}")
+        print(f"  P{ID} stocks         : {fighter.stocks}")
+
+    # Print out stage related state
+    stage = game.get_stage()
+    print(f"whispy : {stage.whispy}")
+
+def result_screen(frame):
+    # start new match? evaluate results?
+    pass
+
 
 def frame_callback(frame):
-    print(f"Frame {frame} game state:")
-    for player_id in (0, 1):
-        x, y          = game.read_player_position(player_id)
-        vx, vy        = game.read_player_launch_velocity(player_id)
-        orientation   = game.read_player_orientation(player_id)
-        anim_state    = game.read_player_anim_state(player_id)
-        anim_progress = game.read_player_anim_progress(player_id)
-        shield        = game.read_player_shield_health(player_id)
-        percent       = game.read_player_damage(player_id)
-        whispy        = game.read_whispy_wind()
-
-        print(f"  P{player_id+1} x, y        : {x}, {y}")
-        print(f"  P{player_id+1} vx, vy      : {vx}, {vy}")
-        print(f"  P{player_id+1} orientation : {orientation}")
-        print(f"  P{player_id+1} state       : {anim_state} ({100*anim_progress:.1f}%)")
-        print(f"  P{player_id+1} shield      : {shield}")
-        print(f"  P{player_id+1} percent     : {percent}%")
-    print(f"  whispy         : {whispy}")
+    #screen = game.current_screen
+    #if screen in (SSB64.MAIN_MENU, SSB64.CHARACTER_SELECT, SSB64.STAGE_SELECT):
+    #    menu_screen(frame)
+    #elif screen == SSB64.MATCH:
+    #    match_screen(frame)
+    #elif screen == SSB64.RESULT_SCREEN:
+    #    result_screen(frame)
+    #else:
+    #    print(f"Warning: Unknown screen {screen}")
+    try:
+        match_screen(frame)
+    except Exception as e:
+        print(e)
 
 emu.frame_callback = frame_callback
 emu.execute()
