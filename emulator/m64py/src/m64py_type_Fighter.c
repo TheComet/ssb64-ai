@@ -1,35 +1,241 @@
 #include "m64py_type_Fighter.h"
+#include "m64py_ssb64_memory.h"
 
 /* ------------------------------------------------------------------------- */
 static void
 Fighter_dealloc(m64py_Fighter* self)
 {
-    Py_XDECREF(self->emu);
+    Py_XDECREF(self->ssb64);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 /* ------------------------------------------------------------------------- */
 static char* kwds_names[] = {
     "emulator",
+    "index",
     NULL
 };
 static PyObject*
 Fighter_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     m64py_Fighter* self;
+    const char* error;
 
     self = (m64py_Fighter*)type->tp_alloc(type, 0);
     if (self == NULL)
         goto alloc_self_failed;
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!", kwds_names, &m64py_EmulatorType, &self->emu))
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O!i", kwds_names, &m64py_SSB64Type, &self->ssb64, &self->idx))
         goto parse_args_failed;
-    Py_INCREF(self->emu);
+    Py_INCREF(self->ssb64);
+
+    /* TODO validate index depending on how many players are active */
+    if (self->idx < 0 || self->idx > 3)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Invalid fighter index: %d", self->idx);
+        goto get_address_failed;
+    }
+    if (!m64py_memory_get_fighter_address(self->ssb64->mem_iface, self->idx, &self->n64_memory_address, &error))
+    {
+        PyErr_SetString(PyExc_RuntimeError, error);
+        goto get_address_failed;
+    }
 
     return (PyObject*)self;
 
-    parse_args_failed : Py_DECREF(self);
-    alloc_self_failed : return NULL;
+    get_address_failed :
+    parse_args_failed  : Py_DECREF(self);
+    alloc_self_failed  : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_POSITION_DOC \
+"-> Tuple[float,float]: Absolute position of player"
+static PyObject*
+Fighter_getposition(m64py_Fighter* self, PyObject* arg)
+{
+    PyObject *py_xpos, *py_ypos, *args;
+    float xpos, ypos;
+    const char* error;
+
+    if (!m64py_memory_read_fighter_position(self->ssb64->mem_iface, self->n64_memory_address, &xpos, &ypos, &error))
+    {
+        PyErr_SetString(PyExc_RuntimeError, error);
+        return NULL;
+    }
+
+    if ((py_xpos = PyFloat_FromDouble(xpos)) == NULL)
+        goto alloc_xpos_failed;
+    if ((py_ypos = PyFloat_FromDouble(ypos)) == NULL)
+        goto alloc_ypos_failed;
+    if ((args = PyTuple_New(2)) == NULL)
+        goto alloc_args_failed;
+    PyTuple_SET_ITEM(args, 0, py_xpos);
+    PyTuple_SET_ITEM(args, 1, py_ypos);
+
+    return args;
+
+    alloc_args_failed : Py_DECREF(py_ypos);
+    alloc_ypos_failed : Py_DECREF(py_xpos);
+    alloc_xpos_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_VELOCITY_DOC \
+"-> Tuple[float,float]: Speed at which the player is currently being launched (e.g. after being hit by the opponent)"
+static PyObject*
+Fighter_getvelocity(m64py_Fighter* self, PyObject* arg)
+{
+    PyObject *py_xvel, *py_yvel, *args;
+    float xvel, yvel;
+
+    m64py_memory_read_fighter_velocity(self->ssb64->mem_iface, self->n64_memory_address, &xvel, &yvel);
+
+    if ((py_xvel = PyFloat_FromDouble(xvel)) == NULL)
+        goto alloc_xpos_failed;
+    if ((py_yvel = PyFloat_FromDouble(yvel)) == NULL)
+        goto alloc_ypos_failed;
+    if ((args = PyTuple_New(2)) == NULL)
+        goto alloc_args_failed;
+    PyTuple_SET_ITEM(args, 0, py_xvel);
+    PyTuple_SET_ITEM(args, 1, py_yvel);
+
+    return args;
+
+    alloc_args_failed : Py_DECREF(py_yvel);
+    alloc_ypos_failed : Py_DECREF(py_xvel);
+    alloc_xpos_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_ACCELERATION_DOC \
+"-> Tuple[float,float]: Accleration at which the player is currently being launched (e.g. after being hit by the opponent)"
+static PyObject*
+Fighter_getacceleration(m64py_Fighter* self, PyObject* arg)
+{
+    PyObject *py_xacc, *py_yacc, *args;
+    float xacc, yacc;
+    const char* error;
+
+    m64py_memory_read_fighter_velocity(self->ssb64->mem_iface, self->n64_memory_address, &xacc, &yacc);
+
+    if ((py_xacc = PyFloat_FromDouble(xacc)) == NULL)
+        goto alloc_xpos_failed;
+    if ((py_yacc = PyFloat_FromDouble(yacc)) == NULL)
+        goto alloc_ypos_failed;
+    if ((args = PyTuple_New(2)) == NULL)
+        goto alloc_args_failed;
+    PyTuple_SET_ITEM(args, 0, py_xacc);
+    PyTuple_SET_ITEM(args, 1, py_yacc);
+
+    return args;
+
+    alloc_args_failed : Py_DECREF(py_yacc);
+    alloc_ypos_failed : Py_DECREF(py_xacc);
+    alloc_xpos_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_ORIENTATION_DOC \
+"-> int: -1=facing left, 1=facing right"
+static PyObject*
+Fighter_getorientation(m64py_Fighter* self, PyObject* arg)
+{
+    int orientation;
+    m64py_memory_read_fighter_orientation(self->ssb64->mem_iface, self->n64_memory_address, &orientation);
+    return PyLong_FromLong(orientation);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_MOVEMENT_FRAME_DOC \
+"-> int: The currently active animation, a number between 0-250 or something"
+static PyObject*
+Fighter_getmovement_frame(m64py_Fighter* self, PyObject* arg)
+{
+    uint32_t frame;
+    m64py_memory_read_fighter_movement_frame(self->ssb64->mem_iface, self->n64_memory_address, &frame);
+    return PyLong_FromLong(frame);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_MOVEMENT_STATE_DOC \
+"-> float: Progress of the currently active animation from 0-1"
+static PyObject*
+Fighter_getmovement_state(m64py_Fighter* self, PyObject* arg)
+{
+    int16_t state;
+    m64py_memory_read_fighter_movement_state(self->ssb64->mem_iface, self->n64_memory_address, &state);
+    return PyLong_FromLong(state);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_SHIELD_HEALTH_DOC \
+"-> int: How much shield the player currently has. Some characters have more shield health than others. Pikachu's is 55, for example.'"
+static PyObject*
+Fighter_getshield_health(m64py_Fighter* self, PyObject* arg)
+{
+    uint32_t shield;
+    m64py_memory_read_fighter_shield_health(self->ssb64->mem_iface, self->n64_memory_address, &shield);
+    return PyLong_FromLong(shield);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_SHIELD_BREAK_RECOVERY_TIMER_DOC \
+"-> int: After a shield break, this counts down to 0 while the player is stunned."
+static PyObject*
+Fighter_getshield_break_recovery_timer(m64py_Fighter* self, PyObject* arg)
+{
+    uint32_t time_left;
+    m64py_memory_read_fighter_shield_break_recovery_timer(self->ssb64->mem_iface, self->n64_memory_address, &time_left);
+    return PyLong_FromLong(time_left);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_DAMAGE_DOC \
+"-> int: Current \"percentage\" of the player from 0-999"
+static PyObject*
+Fighter_getpercent(m64py_Fighter* self, PyObject* arg)
+{
+    uint16_t percent;
+    m64py_memory_read_fighter_percent(self->ssb64->mem_iface, self->n64_memory_address, &percent);
+    return PyLong_FromLong(percent);
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_IS_INVINCIBLE_DOC \
+"-> bool: True if the player is invincible"
+static PyObject*
+Fighter_getis_invincible(m64py_Fighter* self, PyObject* arg)
+{
+    int is_invincible;
+    m64py_memory_read_fighter_is_invincible(self->ssb64->mem_iface, self->n64_memory_address, &is_invincible);
+    if (is_invincible)
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_IS_GROUNDED_DOC \
+"-> bool: True if the player is invincible"
+static PyObject*
+Fighter_getis_grounded(m64py_Fighter* self, PyObject* arg)
+{
+    int is_grounded;
+    m64py_memory_read_fighter_is_grounded(self->ssb64->mem_iface, self->n64_memory_address, &is_grounded);
+    if (is_grounded)
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_STOCKS_DOC \
+"-> int: Number of stocks left"
+static PyObject*
+Fighter_getstocks(m64py_Fighter* self, PyObject* arg)
+{
+    uint8_t stocks;
+    m64py_memory_read_fighter_stocks(self->ssb64->mem_iface, self->n64_memory_address, &stocks);
+    return PyLong_FromLong(stocks);
 }
 
 /* ------------------------------------------------------------------------- */

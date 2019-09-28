@@ -2,12 +2,14 @@
 #define M64PY_TYPE_FIGHTER_H
 
 #include "Python.h"
-#include "m64py_type_Emulator.h"
+#include "m64py_type_SSB64.h"
 
 typedef struct m64py_Fighter
 {
     PyObject_HEAD
-    m64py_Emulator* emu;
+    m64py_SSB64* ssb64;
+    int idx;
+    uint32_t n64_memory_address;
 } m64py_Fighter;
 
 extern PyTypeObject m64py_FighterType;

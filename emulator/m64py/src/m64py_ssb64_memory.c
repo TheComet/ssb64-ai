@@ -1,6 +1,8 @@
 #include "m64py_ssb64_memory.h"
-#include <stdint.h>
+#include "m64py_type_Emulator.h"
 #include <stdlib.h>
+
+#define RDRAM_START 0x80000000
 
 /*
 enum player_base_addresses_e
@@ -163,6 +165,98 @@ m64py_memory_set_fighter(m64py_memory_interface_t* memory, int player_idx, m64py
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage)
+{
+
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_get_whispy_wind(m64py_memory_interface_t* memory, float* blowing_direction)
+{
+
+}
+
+/* -------------------------------------------------------------------------- */
+int
+m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_idx, uint32_t* fighter_address, const char** error_msg)
+{
+    /*
+     * There's a variable at a fixed memory location that points to the beginning
+     * of the list of fighter structures. Try dereferencing it to get the address
+     * of the first fighter
+     */
+    *fighter_address = memory->corelib->DebugMemRead32(MEMORY[memory->region].PLAYER_LIST_PTR);
+    if (*fighter_address < RDRAM_START)
+    {
+        *error_msg = "Player structures haven't been allocated yet";
+        return 0;
+    }
+
+    *fighter_address += 0xB50 * fighter_idx;  /* sizeof(Fighter) * fighter_idx */
+    return 1;
+}
+
+
+/* -------------------------------------------------------------------------- */
+int
+m64py_memory_read_fighter_position(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xpos, float* ypos, const char** error_msg)
+{
+    uint32_t pos_vec_address, xpos_raw, ypos_raw;
+
+    /*
+     * The fighter's position vector is allocated separately from the fighter
+     * struct itself. Dereference pointer to the position vector to get the
+     * address of the position vector.
+     */
+    pos_vec_address = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.POSITION_VECTOR_PTR);
+    if (pos_vec_address < RDRAM_START)
+    {
+        *error_msg = "Player position is NULL";
+        return 0;
+    }
+
+    /* Can now read position vector, which is a ieee754 single precision float */
+    xpos_raw = memory->corelib->DebugMemRead32(pos_vec_address + PLAYER_FIELD.POSITION_VECTOR.POS_X);
+    ypos_raw = memory->corelib->DebugMemRead32(pos_vec_address + PLAYER_FIELD.POSITION_VECTOR.POS_Y);
+
+    /* reinterpret as float */
+    *xpos = *(float*)&xpos_raw;
+    *ypos = *(float*)&ypos_raw;
+
+    return 1;
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_velocity(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xvel, float* yvel)
+{
+    uint32_t xvel_raw, yvel_raw;
+
+    xvel_raw = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.VELOCITY_X);
+    yvel_raw = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.VELOCITY_Y);
+
+    /* reinterpret as float */
+    *xvel = *(float*)&xvel_raw;
+    *yvel = *(float*)&yvel_raw;
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xacc, float* yacc)
+{
+    uint32_t xacc_raw, yacc_raw;
+
+    xacc_raw = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.ACCELERATION_X);
+    yacc_raw = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.ACCELERATION_Y);
+
+    /* reinterpret as float */
+    *xacc = *(float*)&xacc_raw;
+    *yacc = *(float*)&yacc_raw;
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_stocks(m64py_memory_interface_t* memory, int fighter_idx, uint8_t* stock_count)
 {
 
 }

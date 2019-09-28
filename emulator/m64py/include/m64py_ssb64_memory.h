@@ -1,6 +1,8 @@
 #ifndef M64PY_SSB64_MEMORY_H
 #define M64PY_SSB64_MEMORY_H
 
+#include <stdint.h>
+
 typedef struct m64py_Emulator_corelib_interface m64py_Emulator_corelib_interface;
 
 typedef enum m64py_region_e
@@ -115,12 +117,54 @@ void
 m64py_memory_set_time(m64py_memory_interface_t* memory, int time_in_minutes);
 
 void
-m64py_memory_set_fighter(m64py_memory_interface_t* memory, int player_idx, m64py_fighter_e fighter);
+m64py_memory_set_fighter(m64py_memory_interface_t* memory, int fighter_idx, m64py_fighter_e fighter);
 
 void
 m64py_memory_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage);
 
 void
+m64py_memory_get_whispy_wind(m64py_memory_interface_t* memory, float* blowing_direction);
+
+void
 m64py_memory_call_start_game(m64py_memory_interface_t* memory);
+
+int
+m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_idx, uint32_t* fighter_address, const char** error_msg);
+
+int
+m64py_memory_read_fighter_position(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xpos, float* ypos, const char** error_msg);
+
+void
+m64py_memory_read_fighter_velocity(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xvel, float* yvel);
+
+void
+m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xacc, float* yacc);
+
+void
+m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int* orientation);
+
+void
+m64py_memory_read_fighter_movement_frame(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* frame);
+
+void
+m64py_memory_read_fighter_movement_state(m64py_memory_interface_t* memory, uint32_t fighter_address, int16_t* state);
+
+void
+m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield);
+
+void
+m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint16_t* percent);
+
+void
+m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left);
+
+void
+m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible);
+
+void
+m64py_memory_read_fighter_is_grounded(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_grounded);
+
+void
+m64py_memory_read_fighter_stocks(m64py_memory_interface_t* memory, int fighter_idx, uint8_t* stock_count);
 
 #endif /* M64PY_SSB64_MEMORY_H */
