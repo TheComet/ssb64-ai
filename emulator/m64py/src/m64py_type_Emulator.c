@@ -225,6 +225,8 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(LOAD_SSB64_ROM_DOC, "load_ssb64_rom(path_to_rom)\n--\n\n"
+"Loads a Super Smash Bros. 64 ROM");
 static PyObject*
 load_ssb64_rom(m64py_Emulator* self, PyObject* arg)
 {
@@ -241,6 +243,9 @@ load_ssb64_rom(m64py_Emulator* self, PyObject* arg)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(EXECUTE_DOC, "execute()\n--\n\n"
+"Call this after loading the ROM and setting your callback functions. Will\n"
+"enter the emulator's main loop.");
 static PyObject*
 execute(m64py_Emulator* self, PyObject* args)
 {
@@ -258,6 +263,8 @@ execute(m64py_Emulator* self, PyObject* args)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(STOP_DOC, "stop()\n--\n\n"
+"Stops the emulator. The execute() function will return.");
 static PyObject*
 stop(m64py_Emulator* self, PyObject* args)
 {
@@ -280,10 +287,10 @@ run_macro(PyObject* self, PyObject* arg)
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"load_ssb64_rom",     (PyCFunction)load_ssb64_rom,     METH_O, ""},
-    {"execute",            (PyCFunction)execute,            METH_NOARGS, ""},
-    {"stop",               (PyCFunction)stop,               METH_NOARGS, ""},
-    {"run_macro",          (PyCFunction)run_macro,          METH_O, ""},
+    {"load_ssb64_rom",     (PyCFunction)load_ssb64_rom,     METH_O,      LOAD_SSB64_ROM_DOC},
+    {"execute",            (PyCFunction)execute,            METH_NOARGS, EXECUTE_DOC},
+    {"stop",               (PyCFunction)stop,               METH_NOARGS, STOP_DOC},
+    {"run_macro",          (PyCFunction)run_macro,          METH_O,      ""},
     {NULL}
 };
 

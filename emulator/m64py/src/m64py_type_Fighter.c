@@ -11,7 +11,7 @@ Fighter_dealloc(m64py_Fighter* self)
 
 /* ------------------------------------------------------------------------- */
 static char* kwds_names[] = {
-    "emulator",
+    "ssb64",
     "index",
     NULL
 };
@@ -49,8 +49,8 @@ Fighter_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_POSITION_DOC \
-"-> Tuple[float,float]: Absolute position of player"
+PyDoc_STRVAR(FIGHTER_POSITION_DOC,
+"Tuple[float,float]: Absolute position of player");
 static PyObject*
 Fighter_getposition(m64py_Fighter* self, PyObject* arg)
 {
@@ -79,10 +79,17 @@ Fighter_getposition(m64py_Fighter* self, PyObject* arg)
     alloc_ypos_failed : Py_DECREF(py_xpos);
     alloc_xpos_failed : return NULL;
 }
+static int
+Fighter_setposition(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Position is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_VELOCITY_DOC \
-"-> Tuple[float,float]: Speed at which the player is currently being launched (e.g. after being hit by the opponent)"
+PyDoc_STRVAR(FIGHTER_VELOCITY_DOC,
+"Tuple[float,float]: Speed at which the player is currently being launched\n"
+"(e.g. after being hit by the opponent)");
 static PyObject*
 Fighter_getvelocity(m64py_Fighter* self, PyObject* arg)
 {
@@ -106,10 +113,17 @@ Fighter_getvelocity(m64py_Fighter* self, PyObject* arg)
     alloc_ypos_failed : Py_DECREF(py_xvel);
     alloc_xpos_failed : return NULL;
 }
+static int
+Fighter_setvelocity(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Velocity is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_ACCELERATION_DOC \
-"-> Tuple[float,float]: Accleration at which the player is currently being launched (e.g. after being hit by the opponent)"
+PyDoc_STRVAR(FIGHTER_ACCELERATION_DOC,
+"Tuple[float,float]: Accleration at which the player is currently being\n"
+"launched (e.g. after being hit by the opponent)");
 static PyObject*
 Fighter_getacceleration(m64py_Fighter* self, PyObject* arg)
 {
@@ -134,78 +148,121 @@ Fighter_getacceleration(m64py_Fighter* self, PyObject* arg)
     alloc_ypos_failed : Py_DECREF(py_xacc);
     alloc_xpos_failed : return NULL;
 }
+static int
+Fighter_setacceleration(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Acceleration is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_ORIENTATION_DOC \
-"-> int: -1=facing left, 1=facing right"
+PyDoc_STRVAR(FIGHTER_ORIENTATION_DOC,
+"int: -1=facing left, 1=facing right");
 static PyObject*
-Fighter_getorientation(m64py_Fighter* self, PyObject* arg)
+Fighter_getorientation(m64py_Fighter* self, void* closure)
 {
     int orientation;
     m64py_memory_read_fighter_orientation(self->ssb64->mem_iface, self->n64_memory_address, &orientation);
     return PyLong_FromLong(orientation);
 }
+static int
+Fighter_setorientation(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Orientation is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_MOVEMENT_FRAME_DOC \
-"-> int: The currently active animation, a number between 0-250 or something"
+PyDoc_STRVAR(FIGHTER_MOVEMENT_FRAME_DOC,
+"int: The currently active animation, a number between 0-250 or something");
 static PyObject*
-Fighter_getmovement_frame(m64py_Fighter* self, PyObject* arg)
+Fighter_getmovement_frame(m64py_Fighter* self, void* closure)
 {
     uint32_t frame;
     m64py_memory_read_fighter_movement_frame(self->ssb64->mem_iface, self->n64_memory_address, &frame);
     return PyLong_FromLong(frame);
 }
+static int
+Fighter_setmovement_frame(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Movement frame is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_MOVEMENT_STATE_DOC \
-"-> float: Progress of the currently active animation from 0-1"
+PyDoc_STRVAR(FIGHTER_MOVEMENT_STATE_DOC,
+"float: Progress of the currently active animation from 0-1");
 static PyObject*
-Fighter_getmovement_state(m64py_Fighter* self, PyObject* arg)
+Fighter_getmovement_state(m64py_Fighter* self, void* closure)
 {
     int16_t state;
     m64py_memory_read_fighter_movement_state(self->ssb64->mem_iface, self->n64_memory_address, &state);
     return PyLong_FromLong(state);
 }
+static int
+Fighter_setmovement_state(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Movement state is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_SHIELD_HEALTH_DOC \
-"-> int: How much shield the player currently has. Some characters have more shield health than others. Pikachu's is 55, for example.'"
+PyDoc_STRVAR(FIGHTER_SHIELD_HEALTH_DOC,
+"int: How much shield the player currently has. Some characters have more\n"
+"shield health than others. Pikachu's is 55, for example.");
 static PyObject*
-Fighter_getshield_health(m64py_Fighter* self, PyObject* arg)
+Fighter_getshield_health(m64py_Fighter* self, void* closure)
 {
     uint32_t shield;
     m64py_memory_read_fighter_shield_health(self->ssb64->mem_iface, self->n64_memory_address, &shield);
     return PyLong_FromLong(shield);
 }
+static int
+Fighter_setshield_health(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Shield health is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_SHIELD_BREAK_RECOVERY_TIMER_DOC \
-"-> int: After a shield break, this counts down to 0 while the player is stunned."
+PyDoc_STRVAR(FIGHTER_SHIELD_BREAK_RECOVERY_TIMER_DOC,
+"int: After a shield break, this counts down to 0 while the player is stunned.");
 static PyObject*
-Fighter_getshield_break_recovery_timer(m64py_Fighter* self, PyObject* arg)
+Fighter_getshield_break_recovery_timer(m64py_Fighter* self, void* closure)
 {
     uint32_t time_left;
     m64py_memory_read_fighter_shield_break_recovery_timer(self->ssb64->mem_iface, self->n64_memory_address, &time_left);
     return PyLong_FromLong(time_left);
 }
+static int
+Fighter_setshield_break_recovery_timer(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Shield break recovery timer is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_DAMAGE_DOC \
-"-> int: Current \"percentage\" of the player from 0-999"
+PyDoc_STRVAR(FIGHTER_PERCENT_DOC,
+"int: Current \"percentage\" of the player from 0-999");
 static PyObject*
-Fighter_getpercent(m64py_Fighter* self, PyObject* arg)
+Fighter_getpercent(m64py_Fighter* self, void* closure)
 {
     uint16_t percent;
     m64py_memory_read_fighter_percent(self->ssb64->mem_iface, self->n64_memory_address, &percent);
     return PyLong_FromLong(percent);
 }
+static int
+Fighter_setpercent(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Percent is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_IS_INVINCIBLE_DOC \
-"-> bool: True if the player is invincible"
+PyDoc_STRVAR(FIGHTER_IS_INVINCIBLE_DOC,
+"bool: True if the player is invincible (TODO: Not entirely sure what this means. Invincibility frames?)");
 static PyObject*
-Fighter_getis_invincible(m64py_Fighter* self, PyObject* arg)
+Fighter_getis_invincible(m64py_Fighter* self, void* closure)
 {
     int is_invincible;
     m64py_memory_read_fighter_is_invincible(self->ssb64->mem_iface, self->n64_memory_address, &is_invincible);
@@ -213,12 +270,18 @@ Fighter_getis_invincible(m64py_Fighter* self, PyObject* arg)
         Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
+static int
+Fighter_setis_invincible(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Invincibility state is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_IS_GROUNDED_DOC \
-"-> bool: True if the player is invincible"
+PyDoc_STRVAR(FIGHTER_IS_GROUNDED_DOC,
+"bool: True if the player is standing on the ground or on a platform");
 static PyObject*
-Fighter_getis_grounded(m64py_Fighter* self, PyObject* arg)
+Fighter_getis_grounded(m64py_Fighter* self, void* closure)
 {
     int is_grounded;
     m64py_memory_read_fighter_is_grounded(self->ssb64->mem_iface, self->n64_memory_address, &is_grounded);
@@ -226,20 +289,52 @@ Fighter_getis_grounded(m64py_Fighter* self, PyObject* arg)
         Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
+static int
+Fighter_setis_grounded(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Grounded state is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_STOCKS_DOC \
-"-> int: Number of stocks left"
+PyDoc_STRVAR(FIGHTER_STOCKS_DOC,
+"int: Number of stocks left");
 static PyObject*
-Fighter_getstocks(m64py_Fighter* self, PyObject* arg)
+Fighter_getstocks(m64py_Fighter* self, void* closure)
 {
     uint8_t stocks;
     m64py_memory_read_fighter_stocks(self->ssb64->mem_iface, self->n64_memory_address, &stocks);
     return PyLong_FromLong(stocks);
 }
+static int
+Fighter_setstocks(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Number of stocks is read only.");
+    return -1;
+}
 
 /* ------------------------------------------------------------------------- */
-PyTypeObject m64py_SSB64Type = {
+static PyGetSetDef Fighter_getset[] = {
+    {"position",                    (getter)Fighter_getposition,                    (setter)Fighter_setposition,                    FIGHTER_POSITION_DOC, NULL},
+    {"velocity",                    (getter)Fighter_getvelocity,                    (setter)Fighter_setvelocity,                    FIGHTER_VELOCITY_DOC, NULL},
+    {"acceleration",                (getter)Fighter_getacceleration,                (setter)Fighter_setacceleration,                FIGHTER_ACCELERATION_DOC, NULL},
+    {"orientation",                 (getter)Fighter_getorientation,                 (setter)Fighter_setorientation,                 FIGHTER_ORIENTATION_DOC, NULL},
+    {"movement_frame",              (getter)Fighter_getmovement_frame,              (setter)Fighter_setmovement_frame,              FIGHTER_MOVEMENT_FRAME_DOC, NULL},
+    {"movement_state",              (getter)Fighter_getmovement_state,              (setter)Fighter_setmovement_state,              FIGHTER_MOVEMENT_STATE_DOC, NULL},
+    {"shield_health",               (getter)Fighter_getshield_health,               (setter)Fighter_setshield_health,               FIGHTER_SHIELD_HEALTH_DOC, NULL},
+    {"shield_break_recovery_timer", (getter)Fighter_getshield_break_recovery_timer, (setter)Fighter_setshield_break_recovery_timer, FIGHTER_SHIELD_BREAK_RECOVERY_TIMER_DOC, NULL},
+    {"percent",                     (getter)Fighter_getpercent,                     (setter)Fighter_setpercent,                     FIGHTER_PERCENT_DOC, NULL},
+    {"is_invincible",               (getter)Fighter_getis_invincible,               (setter)Fighter_setis_invincible,               FIGHTER_IS_INVINCIBLE_DOC, NULL},
+    {"is_grounded",                 (getter)Fighter_getis_grounded,                 (setter)Fighter_setis_grounded,                 FIGHTER_IS_GROUNDED_DOC, NULL},
+    {"stocks",                      (getter)Fighter_getstocks,                      (setter)Fighter_setstocks,                      FIGHTER_STOCKS_DOC, NULL},
+    {NULL}
+};
+
+/* ------------------------------------------------------------------------- */
+#define FIGHTER_DOC \
+"Base class for all fighters. Provides methods for reading common state, such " \
+"as position, percentage, stock count, etc."
+PyTypeObject m64py_FighterType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "m64py.Fighter",              /* tp_name */
     sizeof(m64py_Fighter),        /* tp_basicsize */
@@ -260,7 +355,7 @@ PyTypeObject m64py_SSB64Type = {
     0,                            /* tp_setattro */
     0,                            /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    "Fighter objects",            /* tp_doc */
+    FIGHTER_DOC,                  /* tp_doc */
     0,                            /* tp_traverse */
     0,                            /* tp_clear */
     0,                            /* tp_richcompare */
@@ -269,7 +364,7 @@ PyTypeObject m64py_SSB64Type = {
     0,                            /* tp_iternext */
     0,                            /* tp_methods */
     0,                            /* tp_members */
-    0,                            /* tp_getset */
+    Fighter_getset,               /* tp_getset */
     0,                            /* tp_base */
     0,                            /* tp_dict */
     0,                            /* tp_descr_get */

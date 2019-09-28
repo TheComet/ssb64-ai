@@ -100,8 +100,9 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 /* ------------------------------------------------------------------------- */
-#define START_MATCH_DOC \
-"Starts the match"
+PyDoc_STRVAR(START_MATCH_DOC, "start_match()\n--\n\n"
+"Starts the match. This should be called once you've configured the ruleset,\n"
+"selected the stage, and selected the fighters.");
 static PyObject*
 SSB64_start_match(m64py_SSB64* self, PyObject* arg)
 {
@@ -109,8 +110,11 @@ SSB64_start_match(m64py_SSB64* self, PyObject* arg)
 }
 
 /* ------------------------------------------------------------------------- */
-#define GET_FIGHTER_DOC \
-""
+PyDoc_STRVAR(GET_FIGHTER_DOC, "get_fighter(index)\n--\n\n"
+"Creates and returns an object that can interface with the fighter's in-game\n"
+"state. The returned type depends on the character you selected before starting\n"
+"the match\n\n"
+"Must be called after starting the match.");
 static PyObject*
 SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
 {
@@ -127,43 +131,103 @@ SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(SET_FIGHTERS_DOC, "set_fighters(fighter1, fighter2, fighter3, fighter4)\n--\n\n"
+"Similar to the character select screen, use this to select each character by\n"
+"specifying Fighter.CHARACTER (e.g. Fighter.PIKACHU) or if you want to disable\n"
+"a fighter, you can specify None instead.\n\n"
+"Must be called before start_match().");
+static PyObject*
+SSB64_set_fighters(m64py_SSB64* self, PyObject* args)
+{
+    unsigned long fighter[4];
+    int i;
+
+    if (PyTuple_GET_SIZE(args) != 4)
+    {
+        PyErr_Format(PyExc_TypeError, "set_fighters() takes exactly 4 arguments but %d were given. Arguments must be of type Fighter.CHARACTER, or can be None if fighter should be disabled.", PyTuple_GET_SIZE(args));
+        return NULL;
+    }
+
+    for (i = 0; i != 4; ++i)
+    {
+        PyObject* arg = PyTuple_GET_ITEM(args, i);
+        if (PyLong_CheckExact(arg))
+        {
+            fighter[i] = PyLong_AsUnsignedLong(arg);
+            if (fighter[i] > FIGHTER_GIANT_DONKEY_KONG)
+            {
+                PyErr_Format(PyExc_ValueError, "Argument %d: Fighter ID is out of range: %d", i+1, fighter[i]);
+                return NULL;
+            }
+        }
+        else if (arg == Py_None)
+        {
+            fighter[i] = FIGHTER_NONE;
+        }
+        else
+        {
+            PyErr_Format(PyExc_TypeError, "set_fighters() argument %d: Type must be either Fighter.CHARACTER or None if fighter should be disabled", i);
+            return NULL;
+        }
+    }
+
+    for (i = 0; i != 4; ++i)
+        m64py_memory_set_fighter(self->mem_iface, i, fighter[i]);
+
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(GET_STAGE_DOC, "get_stage()\n--\n\n"
+"Creates and returns an object that lets you interface with the stage's state.\n"
+"The returned type depends on the stage you selected before starting the match.\n\n"
+"Must be called after starting the match");
+static PyObject*
+SSB64_get_stage(m64py_SSB64* self, PyObject* args)
+{
+    Py_RETURN_NONE;
+}
+
+PyDoc_STRVAR(SET_STAGE_DOC, "set_stage(enum)\n--\n\n"
+"Similar to the stage select screen, use this to select which stage to play on\n"
+"by specifying Stage.NAME (e.g. Stage.DREAM_LAND).\n\n"
+"Must be called before start_match()");
+/* ------------------------------------------------------------------------- */
+static PyObject*
+SSB64_set_stage(m64py_SSB64* self, PyObject* py_stage)
+{
+    unsigned long stage;
+    if (!PyLong_CheckExact(py_stage))
+    {
+        PyErr_SetString(PyExc_TypeError, "set_stage() expects a value of type Stage.NAME, e.g. Stage.DREAM_LAND");
+        return NULL;
+    }
+
+    stage = PyLong_AsUnsignedLong(py_stage);
+    if (stage > STAGE_BTP_NESS)
+    {
+        PyErr_Format(PyExc_ValueError, "set_stage(): Stage ID is out of range: %d", stage);
+        return NULL;
+    }
+
+    m64py_memory_set_stage(self->mem_iface, stage);
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
 static PyMethodDef SSB64_methods[] = {
-    {"start_match", (PyCFunction)SSB64_start_match, METH_NOARGS, START_MATCH_DOC},
-    {"get_fighter", (PyCFunction)SSB64_get_fighter, METH_O, GET_FIGHTER_DOC},
+    {"start_match",  (PyCFunction)SSB64_start_match,  METH_NOARGS,  START_MATCH_DOC},
+    {"get_fighter",  (PyCFunction)SSB64_get_fighter,  METH_O,       GET_FIGHTER_DOC},
+    {"set_fighters", (PyCFunction)SSB64_set_fighters, METH_VARARGS, SET_FIGHTERS_DOC},
+    {"get_stage",    (PyCFunction)SSB64_get_stage,    METH_NOARGS,  GET_STAGE_DOC},
+    {"set_stage",    (PyCFunction)SSB64_set_stage,    METH_O,       SET_STAGE_DOC},
     {NULL}
 };
 
 /* ------------------------------------------------------------------------- */
-#define CHARACTERS_DOC \
-""
-static PyObject*
-SSB64_getcharacters(m64py_SSB64* self, void* closure)
-{
-    Py_RETURN_NONE;
-}
-static int
-SSB64_setcharacters(m64py_SSB64* self, PyObject* value, void* closure)
-{
-    return 0;
-}
-
-/* ------------------------------------------------------------------------- */
-#define STAGE_DOC \
-""
-static PyObject*
-SSB64_getstage(m64py_SSB64* self, void* closure)
-{
-    Py_RETURN_NONE;
-}
-static int
-SSB64_setstage(m64py_SSB64* self, PyObject* value, void* closure)
-{
-    return 0;
-}
-
-/* ------------------------------------------------------------------------- */
-#define MATCH_IN_PROGRESS_DOC \
-""
+PyDoc_STRVAR(MATCH_IN_PROGRESS_DOC,
+"Returns True as soon as the match begins (after calling start_match()). Returns\n"
+"False when one of the fighters wins the match");
 static PyObject*
 SSB64_getis_match_in_progress(m64py_SSB64* self, void* closure)
 {
@@ -177,32 +241,14 @@ SSB64_setis_match_in_progress(m64py_SSB64* self, PyObject* value, void* closure)
 }
 
 /* ------------------------------------------------------------------------- */
-#define WHISPY_DOC \
-"-> float: 0=no wind, -1=blowing left, 1=blowing right. Will ramp up/down as the animation begins/ends"
-static PyObject*
-SSB64_getwhispy(m64py_SSB64* self, void* closure)
-{
-    float wind;
-    m64py_memory_get_whispy_wind(self->mem_iface, &wind);
-    return PyFloat_FromDouble(wind);
-}
-static int
-SSB64_setwhispy(m64py_SSB64* self, PyObject* value, void* closure)
-{
-    PyErr_SetString(PyExc_AttributeError, "Forcing whispy to blow isn't supported (yet?)");
-    return -1;
-}
-
-/* ------------------------------------------------------------------------- */
 static PyGetSetDef SSB64_getset[] = {
-    {"characters",           (getter)SSB64_getcharacters,           (setter)SSB64_setcharacters,           CHARACTERS_DOC, NULL},
-    {"stage",                (getter)SSB64_getstage,                (setter)SSB64_setstage,                STAGE_DOC, NULL},
     {"is_match_in_progress", (getter)SSB64_getis_match_in_progress, (setter)SSB64_setis_match_in_progress, MATCH_IN_PROGRESS_DOC, NULL},
-    {"whispy",               (getter)SSB64_getwhispy,               (setter)SSB64_setwhispy,               WHISPY_DOC, NULL},
     {NULL}
 };
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(SSB64_DOC,
+"Object for interfacing with the memory of the game Super Smash Bros. 64");
 PyTypeObject m64py_SSB64Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "m64py.SSB64",                /* tp_name */
@@ -224,7 +270,7 @@ PyTypeObject m64py_SSB64Type = {
     0,                            /* tp_setattro */
     0,                            /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    "SSB64 objects",              /* tp_doc */
+    SSB64_DOC,                    /* tp_doc */
     0,                            /* tp_traverse */
     0,                            /* tp_clear */
     0,                            /* tp_richcompare */

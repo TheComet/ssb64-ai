@@ -177,6 +177,12 @@ m64py_memory_get_whispy_wind(m64py_memory_interface_t* memory, float* blowing_di
 }
 
 /* -------------------------------------------------------------------------- */
+void
+m64py_memory_call_start_game(m64py_memory_interface_t* memory)
+{
+}
+
+/* -------------------------------------------------------------------------- */
 int
 m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_idx, uint32_t* fighter_address, const char** error_msg)
 {
@@ -252,6 +258,54 @@ m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_
     /* reinterpret as float */
     *xacc = *(float*)&xacc_raw;
     *yacc = *(float*)&yacc_raw;
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int* orientation)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_movement_frame(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* frame)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_movement_state(m64py_memory_interface_t* memory, uint32_t fighter_address, int16_t* state)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint16_t* percent)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible)
+{
+}
+
+/* -------------------------------------------------------------------------- */
+void
+m64py_memory_read_fighter_is_grounded(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_grounded)
+{
 }
 
 /* -------------------------------------------------------------------------- */

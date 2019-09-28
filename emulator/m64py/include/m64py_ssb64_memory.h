@@ -153,10 +153,10 @@ void
 m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield);
 
 void
-m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint16_t* percent);
+m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left);
 
 void
-m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left);
+m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint16_t* percent);
 
 void
 m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible);
