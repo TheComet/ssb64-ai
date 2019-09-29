@@ -247,7 +247,7 @@ PyDoc_STRVAR(FIGHTER_PERCENT_DOC,
 static PyObject*
 Fighter_getpercent(m64py_Fighter* self, void* closure)
 {
-    uint16_t percent;
+    uint32_t percent;
     m64py_memory_read_fighter_percent(self->ssb64->mem_iface, self->n64_memory_address, &percent);
     return PyLong_FromLong(percent);
 }
@@ -303,7 +303,7 @@ static PyObject*
 Fighter_getstocks(m64py_Fighter* self, void* closure)
 {
     uint8_t stocks;
-    m64py_memory_read_fighter_stocks(self->ssb64->mem_iface, self->n64_memory_address, &stocks);
+    m64py_memory_read_fighter_stocks(self->ssb64->mem_iface, self->idx, &stocks);
     return PyLong_FromLong(stocks);
 }
 static int
@@ -331,9 +331,9 @@ static PyGetSetDef Fighter_getset[] = {
 };
 
 /* ------------------------------------------------------------------------- */
-#define FIGHTER_DOC \
-"Base class for all fighters. Provides methods for reading common state, such " \
-"as position, percentage, stock count, etc."
+PyDoc_STRVAR(FIGHTER_DOC,
+"Base class for all fighters. Provides methods for reading common state, such\n"
+"as position, percentage, stock count, etc.");
 PyTypeObject m64py_FighterType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "m64py.Fighter",              /* tp_name */

@@ -15,7 +15,9 @@
     X(CoreAttachPlugin) \
     X(CoreDetachPlugin) \
     X(CoreDoCommand) \
-    X(DebugMemRead32)
+    X(DebugMemRead32) \
+    X(DebugMemRead16) \
+    X(DebugMemRead8)
 
 typedef struct m64py_Emulator_corelib_interface
 {

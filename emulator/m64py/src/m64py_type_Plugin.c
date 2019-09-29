@@ -14,6 +14,8 @@ Plugin_dealloc(m64py_Plugin* self)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(PLUGIN_DOC,
+"Base class for plugins that the core library loads.");
 PyTypeObject m64py_PluginType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "m64py.Plugin",               /* tp_name */
@@ -35,7 +37,7 @@ PyTypeObject m64py_PluginType = {
     0,                            /* tp_setattro */
     0,                            /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    "Plugin objects",             /* tp_doc */
+    PLUGIN_DOC,                   /* tp_doc */
     0,                            /* tp_traverse */
     0,                            /* tp_clear */
     0,                            /* tp_richcompare */

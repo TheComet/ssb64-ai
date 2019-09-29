@@ -262,55 +262,65 @@ m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_
 
 /* -------------------------------------------------------------------------- */
 void
-m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int* orientation)
+m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int32_t* orientation)
 {
+    *orientation = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.FACING_DIRECTION);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_movement_frame(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* frame)
 {
+    *frame = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.MOVEMENT_FRAME);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_movement_state(m64py_memory_interface_t* memory, uint32_t fighter_address, int16_t* state)
 {
+    *state = memory->corelib->DebugMemRead16(fighter_address + PLAYER_FIELD.MOVEMENT_STATE);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield)
 {
+    *shield = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.SHIELD_SIZE);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left)
 {
+    *time_left = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.SHIELD_BREAK_RECOVERY_TIME);
 }
 
 /* -------------------------------------------------------------------------- */
 void
-m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint16_t* percent)
+m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* percent)
 {
+    *percent = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.PERCENT);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible)
 {
+    uint32_t flags = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.INVINCIBILITY_STATE);
+    *is_invincible = (flags & 0x00000002);
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_is_grounded(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_grounded)
 {
+    uint32_t flags = memory->corelib->DebugMemRead32(fighter_address + PLAYER_FIELD.GROUNDED);
+    *is_grounded = !flags;
 }
 
 /* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_fighter_stocks(m64py_memory_interface_t* memory, int fighter_idx, uint8_t* stock_count)
 {
-
+    *stock_count = memory->corelib->DebugMemRead8(STOCK_COUNTERS + fighter_idx);
 }

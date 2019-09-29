@@ -69,7 +69,7 @@ log_message_callback(m64py_Emulator* self, int level, const char* message)
 {
     PyObject *py_level, *py_message, *args, *result;
 
-    if (self->log_message_callback == NULL)
+    if (self->log_message_callback == Py_None)
         return;
 
     if ((py_level = PyLong_FromLong(level)) == NULL)
@@ -100,7 +100,7 @@ frame_callback(int current_frame)
 {
     PyObject *py_frame, *args, *result;
 
-    if (g_emu->frame_callback == NULL)
+    if (g_emu->frame_callback == Py_None)
         return;
 
     if ((py_frame = PyLong_FromLong(current_frame)) == NULL)
@@ -179,6 +179,15 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     if (g_emu == NULL)
         goto alloc_self_failed;
 
+    /* Set these all to valid python objects because log_message_callback cannot
+     * handle NULL */
+    g_emu->input_plugin         = (Py_INCREF(Py_None), Py_None);
+    g_emu->audio_plugin         = (Py_INCREF(Py_None), Py_None);
+    g_emu->video_plugin         = (Py_INCREF(Py_None), Py_None);
+    g_emu->rsp_plugin           = (Py_INCREF(Py_None), Py_None);
+    g_emu->frame_callback       = (Py_INCREF(Py_None), Py_None);
+    g_emu->log_message_callback = (Py_INCREF(Py_None), Py_None);
+
     /* Try to load mupen64plus corelib */
     if ((result = osal_dynlib_open(&g_emu->corelib.handle, corelib_path) != M64ERR_SUCCESS))
     {
@@ -211,11 +220,6 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
     g_emu->corelib.CoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, frame_callback);
 
-    g_emu->input_plugin = (Py_INCREF(Py_None), Py_None);
-    g_emu->audio_plugin = (Py_INCREF(Py_None), Py_None);
-    g_emu->video_plugin = (Py_INCREF(Py_None), Py_None);
-    g_emu->rsp_plugin   = (Py_INCREF(Py_None), Py_None);
-
     return (PyObject*)g_emu;
 
     corelib_startup_failed        :
@@ -228,7 +232,7 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 PyDoc_STRVAR(LOAD_SSB64_ROM_DOC, "load_ssb64_rom(path_to_rom)\n--\n\n"
 "Loads a Super Smash Bros. 64 ROM");
 static PyObject*
-load_ssb64_rom(m64py_Emulator* self, PyObject* arg)
+Emulator_load_ssb64_rom(m64py_Emulator* self, PyObject* arg)
 {
     /* Prepend emulator instance as first argument for SSB64 constructor */
     PyObject* args = PyTuple_New(2);
@@ -247,7 +251,7 @@ PyDoc_STRVAR(EXECUTE_DOC, "execute()\n--\n\n"
 "Call this after loading the ROM and setting your callback functions. Will\n"
 "enter the emulator's main loop.");
 static PyObject*
-execute(m64py_Emulator* self, PyObject* args)
+Emulator_execute(m64py_Emulator* self, PyObject* args)
 {
     if (self->corelib.CoreDoCommand(M64CMD_EXECUTE, 0, NULL) != M64ERR_SUCCESS)
     {
@@ -266,7 +270,7 @@ execute(m64py_Emulator* self, PyObject* args)
 PyDoc_STRVAR(STOP_DOC, "stop()\n--\n\n"
 "Stops the emulator. The execute() function will return.");
 static PyObject*
-stop(m64py_Emulator* self, PyObject* args)
+Emulator_stop(m64py_Emulator* self, PyObject* args)
 {
     m64p_error result;
     if ((result = self->corelib.CoreDoCommand(M64CMD_STOP, 0, NULL)) != M64ERR_SUCCESS)
@@ -280,17 +284,17 @@ stop(m64py_Emulator* self, PyObject* args)
 
 /* ------------------------------------------------------------------------- */
 static PyObject*
-run_macro(PyObject* self, PyObject* arg)
+Emulator_run_macro(PyObject* self, PyObject* arg)
 {
     Py_RETURN_NONE;
 }
 
 /* ------------------------------------------------------------------------- */
 static PyMethodDef Emulator_methods[] = {
-    {"load_ssb64_rom",     (PyCFunction)load_ssb64_rom,     METH_O,      LOAD_SSB64_ROM_DOC},
-    {"execute",            (PyCFunction)execute,            METH_NOARGS, EXECUTE_DOC},
-    {"stop",               (PyCFunction)stop,               METH_NOARGS, STOP_DOC},
-    {"run_macro",          (PyCFunction)run_macro,          METH_O,      ""},
+    {"load_ssb64_rom",     (PyCFunction)Emulator_load_ssb64_rom,     METH_O,      LOAD_SSB64_ROM_DOC},
+    {"execute",            (PyCFunction)Emulator_execute,            METH_NOARGS, EXECUTE_DOC},
+    {"stop",               (PyCFunction)Emulator_stop,               METH_NOARGS, STOP_DOC},
+    {"run_macro",          (PyCFunction)Emulator_run_macro,          METH_O,      ""},
     {NULL}
 };
 
@@ -425,122 +429,138 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(AUDIO_PLUGIN_DOC,
+"When setting this attribute you should specify a path to a mupen64plus \n"
+"compatible audio plugin. To disable the audio plugin (a null-plugin will be\n"
+"loaded in its place) assign None instead. Examples:\n\n"
+"    emulator.audio_plugin = 'path/to/mupen64plus-audio-sdl.so'\n"
+"    emulator.audio_plugin = None  # use a null-plugin instead\n\n"
+"When reading this attribute it will instead return a m64py.Plugin object\n"
+"representing the currently loaded plugin (or None if the plugin failed to load\n"
+"or if no plugin was specified)");
 static PyObject*
-getinput_plugin(m64py_Emulator* self, void* closure)
-{
-    return Py_INCREF(self->input_plugin), self->input_plugin;
-}
-
-/* ------------------------------------------------------------------------- */
-static int
-setinput_plugin(m64py_Emulator* self, PyObject* value, void* closure)
-{
-    return set_plugin_attribute(self, value, M64PLUGIN_INPUT);
-}
-
-/* ------------------------------------------------------------------------- */
-static PyObject*
-getaudio_plugin(m64py_Emulator* self, void* closure)
+Emulator_getaudio_plugin(m64py_Emulator* self, void* closure)
 {
     return Py_INCREF(self->audio_plugin), self->audio_plugin;
 }
-
-/* ------------------------------------------------------------------------- */
 static int
-setaudio_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+Emulator_setaudio_plugin(m64py_Emulator* self, PyObject* value, void* closure)
 {
     return set_plugin_attribute(self, value, M64PLUGIN_AUDIO);
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(INPUT_PLUGIN_DOC,
+"When setting this attribute you should specify a path to a mupen64plus \n"
+"compatible input plugin. To disable the input plugin (a null-plugin will be\n"
+"loaded in its place) assign None instead. Examples:\n\n"
+"    emulator.input_plugin = 'path/to/mupen64plus-input-sdl.so'\n"
+"    emulator.input_plugin = None  # use a null-plugin instead\n\n"
+"When reading this attribute it will instead return a m64py.Plugin object\n"
+"representing the currently loaded plugin (or None if the plugin failed to load\n"
+"or if no plugin was specified)");
 static PyObject*
-getvideo_plugin(m64py_Emulator* self, void* closure)
+Emulator_getinput_plugin(m64py_Emulator* self, void* closure)
 {
-    return Py_INCREF(self->video_plugin), self->video_plugin;
+    return Py_INCREF(self->input_plugin), self->input_plugin;
+}
+static int
+Emulator_setinput_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    return set_plugin_attribute(self, value, M64PLUGIN_INPUT);
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(VIDEO_PLUGIN_DOC,
+"When setting this attribute you should specify a path to a mupen64plus \n"
+"compatible video plugin. To disable the video plugin (a null-plugin will be\n"
+"loaded in its place) assign None instead. Examples:\n\n"
+"    emulator.video_plugin = 'path/to/mupen64plus-video-glide64mk2.so'\n"
+"    emulator.video_plugin = None  # use a null-plugin instead\n\n"
+"When reading this attribute it will instead return a m64py.Plugin object\n"
+"representing the currently loaded plugin (or None if the plugin failed to load\n"
+"or if no plugin was specified)");
+static PyObject*
+Emulator_getvideo_plugin(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->video_plugin), self->video_plugin;
+}
 static int
-setvideo_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+Emulator_setvideo_plugin(m64py_Emulator* self, PyObject* value, void* closure)
 {
     return set_plugin_attribute(self, value, M64PLUGIN_GFX);
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(RSP_PLUGIN_DOC,
+"When setting this attribute you should specify a path to a mupen64plus \n"
+"compatible RSP plugin. To disable the RSP plugin (a null-plugin will be\n"
+"loaded in its place) assign None instead. Examples:\n\n"
+"    emulator.rsp_plugin = 'path/to/mupen64plus-rsp-cxd4-sse2.so'\n"
+"    emulator.rsp_plugin = None  # use a null-plugin instead\n\n"
+"When reading this attribute it will instead return a m64py.Plugin object\n"
+"representing the currently loaded plugin (or None if the plugin failed to load\n"
+"or if no plugin was specified)");
 static PyObject*
-getrsp_plugin(m64py_Emulator* self, void* closure)
+Emulator_getrsp_plugin(m64py_Emulator* self, void* closure)
 {
     return Py_INCREF(self->rsp_plugin), self->rsp_plugin;
 }
-
-/* ------------------------------------------------------------------------- */
 static int
-setrsp_plugin(m64py_Emulator* self, PyObject* value, void* closure)
+Emulator_setrsp_plugin(m64py_Emulator* self, PyObject* value, void* closure)
 {
     return set_plugin_attribute(self, value, M64PLUGIN_RSP);
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(FRAME_CALLBACK_DOC,
+"Specify a function or callable object to be called every frame while the\n"
+"emulator is running. The function needs to take a single argument 'frame_idx'\n"
+"which is an integer that is incremented by 1 every frame.");
 static PyObject*
-getframe_callback(m64py_Emulator* self, void* closure)
+Emulator_getframe_callback(m64py_Emulator* self, void* closure)
 {
-    if (self->frame_callback)
-        return Py_INCREF(self->frame_callback), self->frame_callback;
-
-    Py_RETURN_NONE;
+    return Py_INCREF(self->frame_callback), self->frame_callback;
 }
-
-/* ------------------------------------------------------------------------- */
 static int
-setframe_callback(m64py_Emulator* self, PyObject* callable)
+Emulator_setframe_callback(m64py_Emulator* self, PyObject* callable)
 {
     PyObject* tmp;
 
-    if (callable == Py_None)
+    if (callable != Py_None && !PyCallable_Check(callable))
     {
-        Py_XDECREF(self->frame_callback);
-        self->frame_callback = NULL;
-        return 0;
-    }
-
-    if (!PyCallable_Check(callable))
-    {
-        PyErr_SetString(PyExc_TypeError, "Object is not callable");
+        PyErr_SetString(PyExc_TypeError, "Callback needs to be a callable object (it isn't)");
         return -1;
     }
 
     tmp = self->frame_callback;
     Py_INCREF(callable);
     self->frame_callback = callable;
-    Py_XDECREF(tmp);
+    Py_DECREF(tmp);
 
     return 0;
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(LOG_MESSAGE_CALLBACK_DOC,
+"Specify a function or callable object to listen in on the emulator's log\n"
+"messages. The function needs to take two arguments, 'level' and 'message',\n"
+"where 'level' is an integer value specifying the severity of the message and \n"
+"'message' is a string containing the log message.");
 static PyObject*
-getlog_message_callback(m64py_Emulator* self, void* closure)
+Emulator_getlog_message_callback(m64py_Emulator* self, void* closure)
 {
     if (self->log_message_callback)
         return Py_INCREF(self->log_message_callback), self->log_message_callback;
 
     Py_RETURN_NONE;
 }
-
-/* ------------------------------------------------------------------------- */
 static int
-setlog_message_callback(m64py_Emulator* self, PyObject* callable)
+Emulator_setlog_message_callback(m64py_Emulator* self, PyObject* callable)
 {
     PyObject* tmp;
 
-    if (callable == Py_None)
-    {
-        Py_XDECREF(self->frame_callback);
-        self->frame_callback = NULL;
-        return 0;
-    }
-
-    if (!PyCallable_Check(callable))
+    if (callable != Py_None &&!PyCallable_Check(callable))
     {
         PyErr_SetString(PyExc_TypeError, "Object is not callable");
         return -1;
@@ -556,12 +576,12 @@ setlog_message_callback(m64py_Emulator* self, PyObject* callable)
 
 /* ------------------------------------------------------------------------- */
 static PyGetSetDef Emulator_getsetters[] = {
-    {"input_plugin",         (getter)getinput_plugin,         (setter)setinput_plugin, "", NULL},
-    {"audio_plugin",         (getter)getaudio_plugin,         (setter)setaudio_plugin, "", NULL},
-    {"video_plugin",         (getter)getvideo_plugin,         (setter)setvideo_plugin, "", NULL},
-    {"rsp_plugin",           (getter)getrsp_plugin,           (setter)setrsp_plugin, "", NULL},
-    {"frame_callback",       (getter)getframe_callback,       (setter)setframe_callback, "", NULL},
-    {"log_message_callback", (getter)getlog_message_callback, (setter)setlog_message_callback, "", NULL},
+    {"input_plugin",         (getter)Emulator_getinput_plugin,         (setter)Emulator_setinput_plugin,         RSP_PLUGIN_DOC, NULL},
+    {"audio_plugin",         (getter)Emulator_getaudio_plugin,         (setter)Emulator_setaudio_plugin,         AUDIO_PLUGIN_DOC, NULL},
+    {"video_plugin",         (getter)Emulator_getvideo_plugin,         (setter)Emulator_setvideo_plugin,         VIDEO_PLUGIN_DOC, NULL},
+    {"rsp_plugin",           (getter)Emulator_getrsp_plugin,           (setter)Emulator_setrsp_plugin,           RSP_PLUGIN_DOC, NULL},
+    {"frame_callback",       (getter)Emulator_getframe_callback,       (setter)Emulator_setframe_callback,       FRAME_CALLBACK_DOC, NULL},
+    {"log_message_callback", (getter)Emulator_getlog_message_callback, (setter)Emulator_setlog_message_callback, LOG_MESSAGE_CALLBACK_DOC, NULL},
     {NULL}
 };
 
