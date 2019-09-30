@@ -1,5 +1,6 @@
 #include "m64py_type_SSB64.h"
-#include "m64py_type_Fighter.h"
+#include "m64py_type_Fighter_Pikachu.h"
+#include "m64py_type_Stage_DreamLand.h"
 #include "m64py_ssb64_memory.h"
 
 #include <stdint.h>
@@ -75,8 +76,8 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     }
 
     /* TODO: Figure out region from loaded ROM. For now just assume USA */
-    self->mem_iface = m64py_memory_interface_create(&self->emu->corelib, REGION_USA);
-    if (self->mem_iface == NULL)
+    self->memory_interface = m64py_memory_interface_create(&self->emu->corelib, REGION_USA);
+    if (self->memory_interface == NULL)
         goto alloc_memory_interface_failed;
 
     /* With ROM successfully loaded, we can now start all plugins */
@@ -90,7 +91,7 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     self->emu->is_rom_loaded = 1;
     return (PyObject*)self;
 
-    start_plugins_failed          : m64py_memory_interface_destroy(self->mem_iface);
+    start_plugins_failed          : m64py_memory_interface_destroy(self->memory_interface);
     alloc_memory_interface_failed : self->emu->corelib.CoreDoCommand(M64CMD_ROM_CLOSE, 0, NULL);
     read_rom_failed               : free(rom_buffer);
     malloc_rom_buffer_failed      : fclose(rom_file);
@@ -110,24 +111,94 @@ SSB64_start_match(m64py_SSB64* self, PyObject* arg)
 }
 
 /* ------------------------------------------------------------------------- */
-PyDoc_STRVAR(GET_FIGHTER_DOC, "get_fighter(index)\n--\n\n"
+PyDoc_STRVAR(GET_FIGHTER_DOC, "get_fighter(slot)\n--\n\n"
 "Creates and returns an object that can interface with the fighter's in-game\n"
-"state. The returned type depends on the character you selected before starting\n"
-"the match\n\n"
-"Must be called after starting the match.");
+"state. The slot argument should be an integer between 1 and 4 and corresponds\n"
+"to the player's index. For example, if player 1 and 3 are enabled (with 2 and\n"
+"4 disabled), then you can get player 3 by calling get_fighter(3).\n\n"
+"The returned type depends on the character you selected before starting the\n"
+"match\n\n. Must be called after starting the match.");
 static PyObject*
 SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
 {
-    PyObject* args = PyTuple_New(2);
-    if (args == NULL)
+    int i;
+    int memory_index;
+    long player_slot;
+    m64py_character_e character[4];
+    const char* error_msg;
+    PyObject* args;
+    PyObject* py_player_slot;
+    PyObject* py_memory_index;
+    PyTypeObject* FighterType;
+    m64py_Fighter* fighter;
+
+    /* Get and validate player index argument */
+    if (!PyLong_CheckExact(idx))
+    {
+        PyErr_SetString(PyExc_TypeError, "get_fighter(): Expected integer between 0 and 3");
         return NULL;
+    }
+    player_slot = PyLong_AsLong(idx);
+    if (player_slot < 1 || player_slot > 4)
+    {
+        PyErr_Format(PyExc_ValueError, "get_fighter(): Expected integer between 0 and 3 (got %d instead)", player_slot);
+        return NULL;
+    }
 
-    Py_INCREF(self); PyTuple_SET_ITEM(args, 0, (PyObject*)self);
-    Py_INCREF(idx);  PyTuple_SET_ITEM(args, 1, idx);
+    /* Read match settings to see which player slots are enabled. This affects
+     * each player's memory offset */
+    for (i = 0; i != 4; ++i)
+        if (!m64py_memory_match_settings_get_fighter_character(self->memory_interface, i + 1, &character[i], &error_msg))
+        {
+            PyErr_Format(PyExc_RuntimeError, "Failed to read match settings: %s\n", error_msg);
+            return NULL;
+        }
 
-    m64py_Fighter* fighter = (m64py_Fighter*)PyObject_CallObject((PyObject*)&m64py_FighterType, args);
+    /* Determine index for memory offset */
+    memory_index = 0;
+    for (i = 1; i != player_slot; ++i)
+    {
+        if (character[i-1] != FIGHTER_NONE)
+            ++memory_index;
+        printf("P%d: %d\n", i, character[i-1]);
+    }
+
+    /* Determine the type of the object we want to create */
+    FighterType = NULL;
+    switch (character[player_slot - 1])
+    {
+        case FIGHTER_PIKACHU : FighterType = &m64py_PikachuType; break;
+        case FIGHTER_NONE    :
+            PyErr_Format(PyExc_RuntimeError, "Fighter in slot %d is not fighting!", player_slot);
+            return NULL;
+        default :
+            PyErr_Format(PyExc_RuntimeError, "Fighter character %d is currently not supported. Sorry!", character[player_slot - 1]);
+            return NULL;
+    }
+
+    /* We have enough info to create the fighter object now */
+    py_player_slot = PyLong_FromLong(player_slot);
+    if (py_player_slot == NULL)
+        goto alloc_player_slot_arg_failed;
+    py_memory_index = PyLong_FromLong(memory_index);
+    if (py_memory_index == NULL)
+        goto alloc_memory_index_arg_failed;
+    args = PyTuple_New(3);
+    if (args == NULL)
+        goto alloc_args_failed;
+
+    Py_INCREF(self);
+    PyTuple_SET_ITEM(args, 0, (PyObject*)self);
+    PyTuple_SET_ITEM(args, 1, py_player_slot);
+    PyTuple_SET_ITEM(args, 2, py_memory_index);
+    fighter = (m64py_Fighter*)PyObject_CallObject((PyObject*)FighterType, args);
     Py_DECREF(args);
+
     return (PyObject*)fighter;
+
+    alloc_args_failed             : Py_DECREF(py_memory_index);
+    alloc_memory_index_arg_failed : Py_DECREF(py_player_slot);
+    alloc_player_slot_arg_failed  : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -141,6 +212,7 @@ SSB64_set_fighters(m64py_SSB64* self, PyObject* args)
 {
     unsigned long fighter[4];
     int i;
+    const char* error_msg;
 
     if (PyTuple_GET_SIZE(args) != 4)
     {
@@ -172,7 +244,11 @@ SSB64_set_fighters(m64py_SSB64* self, PyObject* args)
     }
 
     for (i = 0; i != 4; ++i)
-        m64py_memory_set_fighter(self->mem_iface, i, fighter[i]);
+        if (!m64py_memory_match_settings_set_fighter_character(self->memory_interface, i + 1, fighter[i], &error_msg))
+        {
+            PyErr_Format(PyExc_RuntimeError, "Failed to write fighter characters: %s", error_msg);
+            return NULL;
+        }
 
     Py_RETURN_NONE;
 }
@@ -183,9 +259,37 @@ PyDoc_STRVAR(GET_STAGE_DOC, "get_stage()\n--\n\n"
 "The returned type depends on the stage you selected before starting the match.\n\n"
 "Must be called after starting the match");
 static PyObject*
-SSB64_get_stage(m64py_SSB64* self, PyObject* args)
+get_stage_determine_type(m64py_SSB64* self, PyObject* constructor_args)
 {
-    Py_RETURN_NONE;
+    m64py_stage_e stage = -1;
+    const char* error_msg;
+    if (!m64py_memory_match_settings_get_stage(self->memory_interface, &stage, &error_msg))
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to read stage type: %s", error_msg);
+        return NULL;
+    }
+    switch (stage)
+    {
+        case STAGE_DREAM_LAND : return PyObject_CallObject((PyObject*)&m64py_DreamLandType, constructor_args);
+        default :
+            PyErr_SetString(PyExc_NotImplementedError, "A class for the currently loaded stage is not implemented. Sorry!");
+            return NULL;
+    }
+}
+static PyObject*
+SSB64_get_stage(m64py_SSB64* self, PyObject* noargs)
+{
+    PyObject* result;
+    PyObject* args = PyTuple_New(1);
+    if (args == NULL)
+        return NULL;
+    Py_INCREF(self);
+    PyTuple_SET_ITEM(args, 0, (PyObject*)self);
+
+    result = get_stage_determine_type(self, args);
+
+    Py_DECREF(args);
+    return result;
 }
 
 PyDoc_STRVAR(SET_STAGE_DOC, "set_stage(enum)\n--\n\n"
@@ -196,6 +300,7 @@ PyDoc_STRVAR(SET_STAGE_DOC, "set_stage(enum)\n--\n\n"
 static PyObject*
 SSB64_set_stage(m64py_SSB64* self, PyObject* py_stage)
 {
+    const char* error_msg;
     unsigned long stage;
     if (!PyLong_CheckExact(py_stage))
     {
@@ -210,7 +315,12 @@ SSB64_set_stage(m64py_SSB64* self, PyObject* py_stage)
         return NULL;
     }
 
-    m64py_memory_set_stage(self->mem_iface, stage);
+    if (!m64py_memory_match_settings_set_stage(self->memory_interface, stage, &error_msg))
+    {
+        PyErr_Format(PyExc_RuntimeError, "set_stage(): Failed to write stage type: %s", error_msg);
+        return NULL;
+    }
+
     Py_RETURN_NONE;
 }
 

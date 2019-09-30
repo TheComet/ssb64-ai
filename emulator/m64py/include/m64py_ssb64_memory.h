@@ -14,7 +14,7 @@ typedef enum m64py_region_e
     REGION_IQUE
 } m64py_region_e;
 
-typedef enum m64py_fighter_e
+typedef enum m64py_character_e
 {
     FIGHTER_MARIO                 = 0x00,
     FIGHTER_FOX                   = 0x01,
@@ -45,7 +45,7 @@ typedef enum m64py_fighter_e
     FIGHTER_GIANT_DONKEY_KONG     = 0x1A,
     /* FIGHTER_CRASH              = 0x1B, */
     FIGHTER_NONE                  = 0x1C
-} m64py_fighter_e;
+} m64py_character_e;
 
 typedef enum m64py_stage_e
 {
@@ -92,79 +92,52 @@ typedef enum m64py_stage_e
     STAGE_BTP_NESS                = 0x28
 } m64py_stage_e;
 
+typedef enum m64py_fighter_controlled_by_e
+{
+    CONTROLLED_BY_HUMAN = 0,
+    CONTROLLED_BY_AI = 1,
+    CONTROLLED_BY_NONE = 2
+} m64py_fighter_controlled_by_e;
+
 typedef struct m64py_memory_interface_t
 {
     m64py_Emulator_corelib_interface* corelib;
     m64py_region_e region;
 } m64py_memory_interface_t;
 
-m64py_memory_interface_t*
-m64py_memory_interface_create(m64py_Emulator_corelib_interface* corelib, m64py_region_e region);
+m64py_memory_interface_t* m64py_memory_interface_create(m64py_Emulator_corelib_interface* corelib, m64py_region_e region);
+void m64py_memory_interface_destroy(m64py_memory_interface_t* memory);
 
-void
-m64py_memory_interface_destroy(m64py_memory_interface_t* memory);
+void m64py_memory_set_items(m64py_memory_interface_t* memory, int enable);
+void m64py_memory_unlock_characters(m64py_memory_interface_t* memory);
+int m64py_memory_match_settings_get_time(m64py_memory_interface_t* memory, uint8_t* time_in_minutes, const char** error_msg);
+int m64py_memory_match_settings_set_time(m64py_memory_interface_t* memory, uint8_t time_in_minutes, const char** error_msg);
+int m64py_memory_match_settings_get_stocks(m64py_memory_interface_t* memory, uint8_t* stockcount, const char** error_msg);
+int m64py_memory_match_settings_set_stocks(m64py_memory_interface_t* memory, uint8_t stockcount, const char** error_msg);
+int m64py_memory_match_settings_get_stocks_timed(m64py_memory_interface_t* memory, int* stockcount, int* time_in_minutes, const char** error_msg);
+int m64py_memory_match_settings_set_stocks_timed(m64py_memory_interface_t* memory, int stockcount, int time_in_minutes, const char** error_msg);
+int m64py_memory_match_settings_get_fighter_character(m64py_memory_interface_t* memory, int player_slot, m64py_character_e* character, const char** error_msg);
+int m64py_memory_match_settings_set_fighter_character(m64py_memory_interface_t* memory, int player_slot, m64py_character_e character, const char** error_msg);
+int m64py_memory_match_settings_get_stage(m64py_memory_interface_t* memory, m64py_stage_e* stage, const char** error_msg);
+int m64py_memory_match_settings_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage, const char** error_msg);
 
-void
-m64py_memory_set_items(m64py_memory_interface_t* memory, int enable);
+void m64py_memory_call_start_game(m64py_memory_interface_t* memory);
 
-void
-m64py_memory_unlock_characters(m64py_memory_interface_t* memory);
+int m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_memory_index, uint32_t* fighter_address, const char** error_msg);
+void m64py_memory_read_fighter_character(m64py_memory_interface_t* memory, uint32_t fighter_address, m64py_character_e* fighter);
+int m64py_memory_read_fighter_position(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xpos, float* ypos, const char** error_msg);
+void m64py_memory_read_fighter_velocity(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xvel, float* yvel);
+void m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xacc, float* yacc);
+void m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int32_t* orientation);
+void m64py_memory_read_fighter_movement_frame(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* frame);
+void m64py_memory_read_fighter_movement_state(m64py_memory_interface_t* memory, uint32_t fighter_address, int16_t* state);
+void m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield);
+void m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left);
+void m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* percent);
+void m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible);
+void m64py_memory_read_fighter_is_grounded(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_grounded);
+void m64py_memory_read_fighter_stocks(m64py_memory_interface_t* memory, int fighter_idx, uint8_t* stock_count);
 
-void
-m64py_memory_set_stocks(m64py_memory_interface_t* memory, int stockcount);
-
-void
-m64py_memory_set_time(m64py_memory_interface_t* memory, int time_in_minutes);
-
-void
-m64py_memory_set_fighter(m64py_memory_interface_t* memory, int fighter_idx, m64py_fighter_e fighter);
-
-void
-m64py_memory_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage);
-
-void
-m64py_memory_get_whispy_wind(m64py_memory_interface_t* memory, float* blowing_direction);
-
-void
-m64py_memory_call_start_game(m64py_memory_interface_t* memory);
-
-int
-m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_idx, uint32_t* fighter_address, const char** error_msg);
-
-int
-m64py_memory_read_fighter_position(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xpos, float* ypos, const char** error_msg);
-
-void
-m64py_memory_read_fighter_velocity(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xvel, float* yvel);
-
-void
-m64py_memory_read_fighter_acceleration(m64py_memory_interface_t* memory, uint32_t fighter_address, float* xacc, float* yacc);
-
-void
-m64py_memory_read_fighter_orientation(m64py_memory_interface_t* memory, uint32_t fighter_address, int32_t* orientation);
-
-void
-m64py_memory_read_fighter_movement_frame(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* frame);
-
-void
-m64py_memory_read_fighter_movement_state(m64py_memory_interface_t* memory, uint32_t fighter_address, int16_t* state);
-
-void
-m64py_memory_read_fighter_shield_health(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* shield);
-
-void
-m64py_memory_read_fighter_shield_break_recovery_timer(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* time_left);
-
-void
-m64py_memory_read_fighter_percent(m64py_memory_interface_t* memory, uint32_t fighter_address, uint32_t* percent);
-
-void
-m64py_memory_read_fighter_is_invincible(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_invincible);
-
-void
-m64py_memory_read_fighter_is_grounded(m64py_memory_interface_t* memory, uint32_t fighter_address, int* is_grounded);
-
-void
-m64py_memory_read_fighter_stocks(m64py_memory_interface_t* memory, int fighter_idx, uint8_t* stock_count);
+void m64py_memory_read_whispy_wind(m64py_memory_interface_t* memory, float* blowing_direction);
 
 #endif /* M64PY_SSB64_MEMORY_H */

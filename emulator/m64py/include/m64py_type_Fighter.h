@@ -8,7 +8,8 @@ typedef struct m64py_Fighter
 {
     PyObject_HEAD
     m64py_SSB64* ssb64;
-    int idx;
+    int memory_index;
+    int player_slot;
     uint32_t n64_memory_address;
 } m64py_Fighter;
 

@@ -1,9 +1,11 @@
 #include "Python.h"
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Fighter.h"
+#include "m64py_type_Fighter_Pikachu.h"
 #include "m64py_type_Plugin.h"
 #include "m64py_type_SSB64.h"
 #include "m64py_type_Stage.h"
+#include "m64py_type_Stage_DreamLand.h"
 
 /* ------------------------------------------------------------------------- */
 static void
@@ -17,9 +19,11 @@ init_builtin_types(void)
 {
     if (m64py_EmulatorType_init() != 0) return -1;
     if (m64py_FighterType_init() != 0)  return -1;
+    if (m64py_PikachuType_init() != 0)  return -1;
     if (m64py_PluginType_init() != 0)   return -1;
     if (m64py_SSB64Type_init() != 0)    return -1;
     if (m64py_StageType_init() != 0)    return -1;
+    if (m64py_DreamLandType_init() != 0)    return -1;
     return 0;
 }
 
@@ -27,23 +31,13 @@ init_builtin_types(void)
 static int
 add_builtin_types_to_module(PyObject* m)
 {
-    Py_INCREF(&m64py_EmulatorType); if (PyModule_AddObject(m, "Emulator", (PyObject*)&m64py_EmulatorType) != 0) return -1;
-    Py_INCREF(&m64py_FighterType);  if (PyModule_AddObject(m, "Fighter", (PyObject*)&m64py_FighterType) != 0) return -1;
-    Py_INCREF(&m64py_PluginType);   if (PyModule_AddObject(m, "Plugin", (PyObject*)&m64py_PluginType) != 0) return -1;
-    Py_INCREF(&m64py_SSB64Type);    if (PyModule_AddObject(m, "SSB64", (PyObject*)&m64py_SSB64Type) != 0) return -1;
-    Py_INCREF(&m64py_StageType);    if (PyModule_AddObject(m, "Stage", (PyObject*)&m64py_StageType) != 0) return -1;
-    return 0;
-}
-
-/* ------------------------------------------------------------------------- */
-static int
-add_constants_to_module(PyObject* m)
-{
-    /* Fighters */
-    if (PyModule_AddIntConstant(m, "PIKACHU", 0) != 0) return -1;
-
-    /* Stages */
-    if (PyModule_AddIntConstant(m, "DREAMLAND", 0) != 0) return -1;
+    Py_INCREF(&m64py_EmulatorType);  if (PyModule_AddObject(m, "Emulator",  (PyObject*)&m64py_EmulatorType) != 0) return -1;
+    Py_INCREF(&m64py_FighterType);   if (PyModule_AddObject(m, "Fighter",   (PyObject*)&m64py_FighterType) != 0) return -1;
+    Py_INCREF(&m64py_PikachuType);   if (PyModule_AddObject(m, "Pikachu",   (PyObject*)&m64py_PikachuType) != 0) return -1;
+    Py_INCREF(&m64py_PluginType);    if (PyModule_AddObject(m, "Plugin",    (PyObject*)&m64py_PluginType) != 0) return -1;
+    Py_INCREF(&m64py_SSB64Type);     if (PyModule_AddObject(m, "SSB64",     (PyObject*)&m64py_SSB64Type) != 0) return -1;
+    Py_INCREF(&m64py_StageType);     if (PyModule_AddObject(m, "Stage",     (PyObject*)&m64py_StageType) != 0) return -1;
+    Py_INCREF(&m64py_DreamLandType); if (PyModule_AddObject(m, "DreamLand", (PyObject*)&m64py_DreamLandType) != 0) return -1;
     return 0;
 }
 
@@ -71,7 +65,6 @@ PyMODINIT_FUNC PyInit_m64py(void)
 
     if (init_builtin_types() != 0)           goto init_module_failed;
     if (add_builtin_types_to_module(m) != 0) goto init_module_failed;
-    if (add_constants_to_module(m) != 0)     goto init_module_failed;
 
     return m;
 

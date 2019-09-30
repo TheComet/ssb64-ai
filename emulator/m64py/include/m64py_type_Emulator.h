@@ -17,7 +17,10 @@
     X(CoreDoCommand) \
     X(DebugMemRead32) \
     X(DebugMemRead16) \
-    X(DebugMemRead8)
+    X(DebugMemRead8) \
+    X(DebugMemWrite32) \
+    X(DebugMemWrite16) \
+    X(DebugMemWrite8)
 
 typedef struct m64py_Emulator_corelib_interface
 {
