@@ -99,6 +99,18 @@ typedef enum m64py_fighter_controlled_by_e
     CONTROLLED_BY_NONE = 2
 } m64py_fighter_controlled_by_e;
 
+typedef enum m64py_screen_e
+{
+    SCREEN_MODE_SELECT = 3,
+    SCREEN_TITLE = 4,
+    SCREEN_VS_MODE = 5,
+    SCREEN_INTRO_CUTSCENE = 6,
+    SCREEN_GAME = 8,
+    SCREEN_RESULTS = 11,
+    SCREEN_CHARACTER_SELECT = 14,
+
+} m64py_screen_e;
+
 typedef struct m64py_memory_interface_t
 {
     m64py_Emulator_corelib_interface* corelib;

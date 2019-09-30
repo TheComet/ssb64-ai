@@ -157,11 +157,8 @@ SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
     /* Determine index for memory offset */
     memory_index = 0;
     for (i = 1; i != player_slot; ++i)
-    {
         if (character[i-1] != FIGHTER_NONE)
             ++memory_index;
-        printf("P%d: %d\n", i, character[i-1]);
-    }
 
     /* Determine the type of the object we want to create */
     FighterType = NULL;

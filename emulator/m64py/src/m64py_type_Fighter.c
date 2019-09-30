@@ -22,8 +22,6 @@ Fighter_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     m64py_Fighter* self;
     const char* error;
 
-    puts("Fighter_new");
-
     self = (m64py_Fighter*)type->tp_alloc(type, 0);
     if (self == NULL)
         goto alloc_self_failed;
