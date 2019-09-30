@@ -1,5 +1,5 @@
-#ifndef M64PY_TYPE_FIGHTER_DREAM_LAND_H
-#define M64PY_TYPE_FIGHTER_DREAM_LAND_H
+#ifndef M64PY_TYPE_STAGE_DREAM_LAND_H
+#define M64PY_TYPE_STAGE_DREAM_LAND_H
 
 #include "m64py_type_Stage.h"
 
@@ -13,4 +13,4 @@ extern PyTypeObject m64py_DreamLandType;
 int
 m64py_DreamLandType_init(void);
 
-#endif /* M64PY_TYPE_FIGHTER_DREAM_LAND_H */
+#endif /* M64PY_TYPE_STAGE_DREAM_LAND_H */

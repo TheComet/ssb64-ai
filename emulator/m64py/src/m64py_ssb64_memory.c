@@ -113,7 +113,7 @@ static const struct match_settings_field_t
     uint32_t MATCH_TYPE;
     uint32_t TIME;
     uint32_t STOCK;
-    uint32_t PLAYER_DATA_PTR[4];
+    uint32_t PLAYER_DATA_OFFSET[4];
     struct player_data_t {
         uint32_t CONTROLLED_BY;
         uint32_t CHARACTER;
@@ -124,7 +124,7 @@ static const struct match_settings_field_t
     .MATCH_TYPE = 0x03,
     .TIME       = 0x06,
     .STOCK      = 0x07,
-    .PLAYER_DATA_PTR = {
+    .PLAYER_DATA_OFFSET = {
         0x20, 0x94, 0x108, 0x17C
     },
     .PLAYER_DATA = {
@@ -258,7 +258,7 @@ m64py_memory_match_settings_get_fighter_character(m64py_memory_interface_t* memo
     if (!(match_settings = get_match_settings(memory, error_msg)))
         return 0;
 
-    *character = memory->corelib->DebugMemRead8(match_settings + MATCH_SETTINGS_FIELD.PLAYER_DATA_PTR[player_slot - 1] + MATCH_SETTINGS_FIELD.PLAYER_DATA.CHARACTER);
+    *character = memory->corelib->DebugMemRead8(match_settings + MATCH_SETTINGS_FIELD.PLAYER_DATA_OFFSET[player_slot - 1] + MATCH_SETTINGS_FIELD.PLAYER_DATA.CHARACTER);
 
     return 1;
 }
@@ -271,7 +271,7 @@ m64py_memory_match_settings_set_fighter_character(m64py_memory_interface_t* memo
     if (!(match_settings = get_match_settings(memory, error_msg)))
         return 0;
 
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.PLAYER_DATA_PTR[player_slot - 1] + MATCH_SETTINGS_FIELD.PLAYER_DATA.CHARACTER, character);
+    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.PLAYER_DATA_OFFSET[player_slot - 1] + MATCH_SETTINGS_FIELD.PLAYER_DATA.CHARACTER, character);
 
     return 1;
 }

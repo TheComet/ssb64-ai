@@ -23,7 +23,7 @@ typedef enum m64py_character_e
     FIGHTER_LUIGI                 = 0x04,
     FIGHTER_LINK                  = 0x05,
     FIGHTER_YOSHI                 = 0x06,
-    FIGHTER_FALCON                = 0x07,
+    FIGHTER_CAPTAIN_FALCON        = 0x07,
     FIGHTER_KIRBY                 = 0x08,
     FIGHTER_PIKACHU               = 0x09,
     FIGHTER_JIGGLYPUFF            = 0x0A,

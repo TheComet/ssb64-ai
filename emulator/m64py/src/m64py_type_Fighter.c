@@ -191,7 +191,9 @@ Fighter_setorientation(m64py_Fighter* self, PyObject* value, void* closure)
 
 /* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(FIGHTER_MOVEMENT_FRAME_DOC,
-"int: The currently active animation, a number between 0-250 or something");
+"int: Counter that resets every time animation state changes. This could be\n"
+"interpreted as 'animation progress', but it doesn't reset when the animation\n"
+"loops.");
 static PyObject*
 Fighter_getmovement_frame(m64py_Fighter* self, void* closure)
 {
@@ -208,7 +210,8 @@ Fighter_setmovement_frame(m64py_Fighter* self, PyObject* value, void* closure)
 
 /* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(FIGHTER_MOVEMENT_STATE_DOC,
-"float: Progress of the currently active animation from 0-1");
+"int: The current state of the fighter. This is a number that uniquely identifies\n"
+"every animation, even across characters.");
 static PyObject*
 Fighter_getmovement_state(m64py_Fighter* self, void* closure)
 {

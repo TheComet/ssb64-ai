@@ -1,6 +1,25 @@
 #include "m64py_type_SSB64.h"
+#include "m64py_type_Fighter_CaptainFalcon.h"
+#include "m64py_type_Fighter_DonkeyKong.h"
+#include "m64py_type_Fighter_Fox.h"
+#include "m64py_type_Fighter_Jigglypuff.h"
+#include "m64py_type_Fighter_Kirby.h"
+#include "m64py_type_Fighter_Link.h"
+#include "m64py_type_Fighter_Luigi.h"
+#include "m64py_type_Fighter_Mario.h"
+#include "m64py_type_Fighter_Ness.h"
 #include "m64py_type_Fighter_Pikachu.h"
+#include "m64py_type_Fighter_Samus.h"
+#include "m64py_type_Fighter_Yoshi.h"
 #include "m64py_type_Stage_DreamLand.h"
+#include "m64py_type_Stage_HyruleCastle.h"
+#include "m64py_type_Stage_KongoJungle.h"
+#include "m64py_type_Stage_MushroomKingdom.h"
+#include "m64py_type_Stage_PeachsCastle.h"
+#include "m64py_type_Stage_PlanetZebes.h"
+#include "m64py_type_Stage_SaffronCity.h"
+#include "m64py_type_Stage_SectorZ.h"
+#include "m64py_type_Stage_YoshisIsland.h"
 #include "m64py_ssb64_memory.h"
 
 #include <stdint.h>
@@ -164,7 +183,18 @@ SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
     FighterType = NULL;
     switch (character[player_slot - 1])
     {
-        case FIGHTER_PIKACHU : FighterType = &m64py_PikachuType; break;
+        case FIGHTER_CAPTAIN_FALCON : FighterType = &m64py_CaptainFalconType; break;
+        case FIGHTER_DONKEY_KONG    : FighterType = &m64py_DonkeyKongType;    break;
+        case FIGHTER_FOX            : FighterType = &m64py_FoxType;           break;
+        case FIGHTER_JIGGLYPUFF     : FighterType = &m64py_JigglypuffType;    break;
+        case FIGHTER_KIRBY          : FighterType = &m64py_KirbyType;         break;
+        case FIGHTER_LINK           : FighterType = &m64py_LinkType;          break;
+        case FIGHTER_LUIGI          : FighterType = &m64py_LuigiType;         break;
+        case FIGHTER_MARIO          : FighterType = &m64py_MarioType;         break;
+        case FIGHTER_NESS           : FighterType = &m64py_NessType;          break;
+        case FIGHTER_PIKACHU        : FighterType = &m64py_PikachuType;       break;
+        case FIGHTER_SAMUS          : FighterType = &m64py_SamusType;         break;
+        case FIGHTER_YOSHI          : FighterType = &m64py_YoshiType;         break;
         case FIGHTER_NONE    :
             PyErr_Format(PyExc_RuntimeError, "Fighter in slot %d is not fighting!", player_slot);
             return NULL;
@@ -267,7 +297,15 @@ get_stage_determine_type(m64py_SSB64* self, PyObject* constructor_args)
     }
     switch (stage)
     {
-        case STAGE_DREAM_LAND : return PyObject_CallObject((PyObject*)&m64py_DreamLandType, constructor_args);
+        case STAGE_DREAM_LAND       : return PyObject_CallObject((PyObject*)&m64py_DreamLandType, constructor_args);
+        case STAGE_HYRULE_CASTLE    : return PyObject_CallObject((PyObject*)&m64py_HyruleCastleType, constructor_args);
+        case STAGE_KONGO_JUNGLE     : return PyObject_CallObject((PyObject*)&m64py_KongoJungleType, constructor_args);
+        case STAGE_MUSHROOM_KINGDOM : return PyObject_CallObject((PyObject*)&m64py_MushroomKingdomType, constructor_args);
+        case STAGE_PEACHS_CASTLE    : return PyObject_CallObject((PyObject*)&m64py_PeachsCastleType, constructor_args);
+        case STAGE_PLANET_ZEBES     : return PyObject_CallObject((PyObject*)&m64py_PlanetZebesType, constructor_args);
+        case STAGE_SAFFRON_CITY     : return PyObject_CallObject((PyObject*)&m64py_SaffronCityType, constructor_args);
+        case STAGE_SECTOR_Z         : return PyObject_CallObject((PyObject*)&m64py_SectorZType, constructor_args);
+        case STAGE_YOSHIS_ISLAND    : return PyObject_CallObject((PyObject*)&m64py_YoshisIslandType, constructor_args);
         default :
             PyErr_SetString(PyExc_NotImplementedError, "A class for the currently loaded stage is not implemented. Sorry!");
             return NULL;
