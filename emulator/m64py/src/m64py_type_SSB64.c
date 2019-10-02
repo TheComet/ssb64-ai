@@ -120,16 +120,6 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 }
 
 /* ------------------------------------------------------------------------- */
-PyDoc_STRVAR(START_MATCH_DOC, "start_match()\n--\n\n"
-"Starts the match. This should be called once you've configured the ruleset,\n"
-"selected the stage, and selected the fighters.");
-static PyObject*
-SSB64_start_match(m64py_SSB64* self, PyObject* arg)
-{
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(GET_FIGHTER_DOC, "get_fighter(slot)\n--\n\n"
 "Creates and returns an object that can interface with the fighter's in-game\n"
 "state. The slot argument should be an integer between 1 and 4 and corresponds\n"
@@ -229,58 +219,6 @@ SSB64_get_fighter(m64py_SSB64* self, PyObject* idx)
 }
 
 /* ------------------------------------------------------------------------- */
-PyDoc_STRVAR(SET_FIGHTERS_DOC, "set_fighters(fighter1, fighter2, fighter3, fighter4)\n--\n\n"
-"Similar to the character select screen, use this to select each character by\n"
-"specifying Fighter.CHARACTER (e.g. Fighter.PIKACHU) or if you want to disable\n"
-"a fighter, you can specify None instead.\n\n"
-"Must be called before start_match().");
-static PyObject*
-SSB64_set_fighters(m64py_SSB64* self, PyObject* args)
-{
-    unsigned long fighter[4];
-    int i;
-    const char* error_msg;
-
-    if (PyTuple_GET_SIZE(args) != 4)
-    {
-        PyErr_Format(PyExc_TypeError, "set_fighters() takes exactly 4 arguments but %d were given. Arguments must be of type Fighter.CHARACTER, or can be None if fighter should be disabled.", PyTuple_GET_SIZE(args));
-        return NULL;
-    }
-
-    for (i = 0; i != 4; ++i)
-    {
-        PyObject* arg = PyTuple_GET_ITEM(args, i);
-        if (PyLong_CheckExact(arg))
-        {
-            fighter[i] = PyLong_AsUnsignedLong(arg);
-            if (fighter[i] > FIGHTER_GIANT_DONKEY_KONG)
-            {
-                PyErr_Format(PyExc_ValueError, "Argument %d: Fighter ID is out of range: %d", i+1, fighter[i]);
-                return NULL;
-            }
-        }
-        else if (arg == Py_None)
-        {
-            fighter[i] = FIGHTER_NONE;
-        }
-        else
-        {
-            PyErr_Format(PyExc_TypeError, "set_fighters() argument %d: Type must be either Fighter.CHARACTER or None if fighter should be disabled", i);
-            return NULL;
-        }
-    }
-
-    for (i = 0; i != 4; ++i)
-        if (!m64py_memory_match_settings_set_fighter_character(self->memory_interface, i + 1, fighter[i], &error_msg))
-        {
-            PyErr_Format(PyExc_RuntimeError, "Failed to write fighter characters: %s", error_msg);
-            return NULL;
-        }
-
-    Py_RETURN_NONE;
-}
-
-/* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(GET_STAGE_DOC, "get_stage()\n--\n\n"
 "Creates and returns an object that lets you interface with the stage's state.\n"
 "The returned type depends on the stage you selected before starting the match.\n\n"
@@ -327,45 +265,10 @@ SSB64_get_stage(m64py_SSB64* self, PyObject* noargs)
     return result;
 }
 
-PyDoc_STRVAR(SET_STAGE_DOC, "set_stage(enum)\n--\n\n"
-"Similar to the stage select screen, use this to select which stage to play on\n"
-"by specifying Stage.NAME (e.g. Stage.DREAM_LAND).\n\n"
-"Must be called before start_match()");
-/* ------------------------------------------------------------------------- */
-static PyObject*
-SSB64_set_stage(m64py_SSB64* self, PyObject* py_stage)
-{
-    const char* error_msg;
-    unsigned long stage;
-    if (!PyLong_CheckExact(py_stage))
-    {
-        PyErr_SetString(PyExc_TypeError, "set_stage() expects a value of type Stage.NAME, e.g. Stage.DREAM_LAND");
-        return NULL;
-    }
-
-    stage = PyLong_AsUnsignedLong(py_stage);
-    if (stage > STAGE_BTP_NESS)
-    {
-        PyErr_Format(PyExc_ValueError, "set_stage(): Stage ID is out of range: %d", stage);
-        return NULL;
-    }
-
-    if (!m64py_memory_match_settings_set_stage(self->memory_interface, stage, &error_msg))
-    {
-        PyErr_Format(PyExc_RuntimeError, "set_stage(): Failed to write stage type: %s", error_msg);
-        return NULL;
-    }
-
-    Py_RETURN_NONE;
-}
-
 /* ------------------------------------------------------------------------- */
 static PyMethodDef SSB64_methods[] = {
-    {"start_match",  (PyCFunction)SSB64_start_match,  METH_NOARGS,  START_MATCH_DOC},
     {"get_fighter",  (PyCFunction)SSB64_get_fighter,  METH_O,       GET_FIGHTER_DOC},
-    {"set_fighters", (PyCFunction)SSB64_set_fighters, METH_VARARGS, SET_FIGHTERS_DOC},
     {"get_stage",    (PyCFunction)SSB64_get_stage,    METH_NOARGS,  GET_STAGE_DOC},
-    {"set_stage",    (PyCFunction)SSB64_set_stage,    METH_O,       SET_STAGE_DOC},
     {NULL}
 };
 
@@ -376,12 +279,14 @@ PyDoc_STRVAR(MATCH_IN_PROGRESS_DOC,
 static PyObject*
 SSB64_getis_match_in_progress(m64py_SSB64* self, void* closure)
 {
-    Py_RETURN_TRUE;
+    if (m64py_memory_is_match_in_progress(self->memory_interface))
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 static int
 SSB64_setis_match_in_progress(m64py_SSB64* self, PyObject* value, void* closure)
 {
-    PyErr_SetString(PyExc_AttributeError, "Read only. Use start_match() to start the match.");
+    PyErr_SetString(PyExc_AttributeError, "Read only.");
     return -1;
 }
 

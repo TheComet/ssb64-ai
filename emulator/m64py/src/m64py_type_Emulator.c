@@ -1,6 +1,6 @@
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Plugin.h"
-#include "m64py_type_Plugin_CuckedPlugin.h"
+#include "m64py_type_Plugin_CuckedInputPlugin.h"
 #include "m64py_type_SSB64.h"
 #include <structmember.h>
 #include <frameobject.h>
@@ -360,7 +360,7 @@ try_loading_and_replacing_plugin(
 
     /* Input plugin is handled specially (gets intercepted so AI can take over) */
     if (plugin_type == M64PLUGIN_INPUT)
-        PluginType = &m64py_CuckedPluginType;
+        PluginType = &m64py_CuckedInputPluginType;
     else
         PluginType = &m64py_PluginType;
 

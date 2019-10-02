@@ -1,4 +1,5 @@
 #include "Python.h"
+#include "m64py_type_Controller.h"
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Fighter.h"
 #include "m64py_type_Fighter_CaptainFalcon.h"
@@ -14,7 +15,7 @@
 #include "m64py_type_Fighter_Samus.h"
 #include "m64py_type_Fighter_Yoshi.h"
 #include "m64py_type_Plugin.h"
-#include "m64py_type_Plugin_CuckedPlugin.h"
+#include "m64py_type_Plugin_CuckedInputPlugin.h"
 #include "m64py_type_SSB64.h"
 #include "m64py_type_Stage.h"
 #include "m64py_type_Stage_DreamLand.h"
@@ -37,6 +38,7 @@ module_free(void* m)
 static int
 init_builtin_types(void)
 {
+    if (m64py_ControllerType_init() != 0)      return -1;
     if (m64py_EmulatorType_init() != 0)        return -1;
     if (m64py_FighterType_init() != 0)         return -1;
     if (m64py_CaptainFalconType_init() != 0)   return -1;
@@ -52,7 +54,7 @@ init_builtin_types(void)
     if (m64py_SamusType_init() != 0)           return -1;
     if (m64py_YoshiType_init() != 0)           return -1;
     if (m64py_PluginType_init() != 0)          return -1;
-    if (m64py_CuckedPluginType_init() != 0)    return -1;
+    if (m64py_CuckedInputPluginType_init() != 0)    return -1;
     if (m64py_SSB64Type_init() != 0)           return -1;
     if (m64py_StageType_init() != 0)           return -1;
     if (m64py_DreamLandType_init() != 0)       return -1;
@@ -71,6 +73,7 @@ init_builtin_types(void)
 static int
 add_builtin_types_to_module(PyObject* m)
 {
+    Py_INCREF(&m64py_ControllerType);      if (PyModule_AddObject(m, "Controller",      (PyObject*)&m64py_ControllerType) != 0)      return -1;
     Py_INCREF(&m64py_EmulatorType);        if (PyModule_AddObject(m, "Emulator",        (PyObject*)&m64py_EmulatorType) != 0)        return -1;
     Py_INCREF(&m64py_FighterType);         if (PyModule_AddObject(m, "Fighter",         (PyObject*)&m64py_FighterType) != 0)         return -1;
     Py_INCREF(&m64py_CaptainFalconType);   if (PyModule_AddObject(m, "CaptainFalcon",   (PyObject*)&m64py_CaptainFalconType) != 0)   return -1;
@@ -86,7 +89,7 @@ add_builtin_types_to_module(PyObject* m)
     Py_INCREF(&m64py_SamusType);           if (PyModule_AddObject(m, "Samus",           (PyObject*)&m64py_SamusType) != 0)           return -1;
     Py_INCREF(&m64py_YoshiType);           if (PyModule_AddObject(m, "Yoshi",           (PyObject*)&m64py_YoshiType) != 0)           return -1;
     Py_INCREF(&m64py_PluginType);          if (PyModule_AddObject(m, "Plugin",          (PyObject*)&m64py_PluginType) != 0)          return -1;
-    Py_INCREF(&m64py_CuckedPluginType);    if (PyModule_AddObject(m, "CuckedPlugin",    (PyObject*)&m64py_CuckedPluginType) != 0)    return -1;
+    Py_INCREF(&m64py_CuckedInputPluginType);    if (PyModule_AddObject(m, "CuckedInputPlugin",    (PyObject*)&m64py_CuckedInputPluginType) != 0)    return -1;
     Py_INCREF(&m64py_SSB64Type);           if (PyModule_AddObject(m, "SSB64",           (PyObject*)&m64py_SSB64Type) != 0)           return -1;
     Py_INCREF(&m64py_StageType);           if (PyModule_AddObject(m, "Stage",           (PyObject*)&m64py_StageType) != 0)           return -1;
     Py_INCREF(&m64py_DreamLandType);       if (PyModule_AddObject(m, "DreamLand",       (PyObject*)&m64py_DreamLandType) != 0)       return -1;

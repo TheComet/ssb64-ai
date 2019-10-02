@@ -5,6 +5,7 @@
 static void
 Fighter_dealloc(m64py_Fighter* self)
 {
+    Py_XDECREF(self->controller);
     Py_XDECREF(self->ssb64);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
@@ -21,6 +22,8 @@ Fighter_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     m64py_Fighter* self;
     const char* error;
+    PyObject* controller_args;
+    PyObject* py_player_slot;
 
     self = (m64py_Fighter*)type->tp_alloc(type, 0);
     if (self == NULL)
@@ -41,11 +44,27 @@ Fighter_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         goto get_address_failed;
     }
 
+    controller_args = PyTuple_New(2);
+    if (controller_args == NULL)
+        goto alloc_controller_failed;
+
+    Py_INCREF(self->ssb64->emu);
+    PyTuple_SET_ITEM(controller_args, 0, (PyObject*)self->ssb64->emu);
+    py_player_slot = PyTuple_GET_ITEM(args, 1);
+    Py_INCREF(py_player_slot);
+    PyTuple_SET_ITEM(controller_args, 1, py_player_slot);
+
+    self->controller = (m64py_Controller*)PyObject_CallObject((PyObject*)&m64py_ControllerType, controller_args);
+    Py_DECREF(controller_args);
+    if (self->controller == NULL)
+        goto alloc_controller_failed;
+
     return (PyObject*)self;
 
-    get_address_failed :
-    parse_args_failed  : Py_DECREF(self);
-    alloc_self_failed  : return NULL;
+    alloc_controller_failed      :
+    get_address_failed           :
+    parse_args_failed            : Py_DECREF(self);
+    alloc_self_failed            : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -323,13 +342,28 @@ static PyObject*
 Fighter_getstocks(m64py_Fighter* self, void* closure)
 {
     uint8_t stocks;
-    m64py_memory_read_fighter_stocks(self->ssb64->memory_interface, self->player_slot, &stocks);
+    m64py_memory_read_fighter_stocks(self->ssb64->memory_interface, self->memory_index, &stocks);
     return PyLong_FromLong(stocks);
 }
 static int
 Fighter_setstocks(m64py_Fighter* self, PyObject* value, void* closure)
 {
     PyErr_SetString(PyExc_AttributeError, "Number of stocks is read only.");
+    return -1;
+}
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(FIGHTER_CONTROLLER_DOC,
+"m64py.Controller: An object that can control the player's button and joystick inputs");
+static m64py_Controller*
+Fighter_getcontroller(m64py_Fighter* self, void* closure)
+{
+    return Py_INCREF(self->controller), self->controller;
+}
+static int
+Fighter_setcontroller(m64py_Fighter* self, PyObject* value, void* closure)
+{
+    PyErr_SetString(PyExc_AttributeError, "Controller is read-only");
     return -1;
 }
 
@@ -348,6 +382,7 @@ static PyGetSetDef Fighter_getset[] = {
     {"is_invincible",               (getter)Fighter_getis_invincible,               (setter)Fighter_setis_invincible,               FIGHTER_IS_INVINCIBLE_DOC, NULL},
     {"is_grounded",                 (getter)Fighter_getis_grounded,                 (setter)Fighter_setis_grounded,                 FIGHTER_IS_GROUNDED_DOC, NULL},
     {"stocks",                      (getter)Fighter_getstocks,                      (setter)Fighter_setstocks,                      FIGHTER_STOCKS_DOC, NULL},
+    {"controller",                  (getter)Fighter_getcontroller,                  (setter)Fighter_setcontroller,                  FIGHTER_CONTROLLER_DOC, NULL},
     {NULL}
 };
 

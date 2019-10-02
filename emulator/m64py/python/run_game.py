@@ -1,70 +1,89 @@
 import m64py
+import traceback
 from os import getcwd
 from os.path import join
 
-data_path = join(getcwd(), "data")
 
-emu = m64py.Emulator(
-        corelib_path="./libmupen64plus.so", 
-        config_path=data_path,
-        data_path=data_path)
-emu.log_message_callback = lambda level, msg: print(f"{level}: {msg}")
-emu.rsp_plugin = "./mupen64plus-rsp-cxd4-sse2.so"
-emu.input_plugin = "./mupen64plus-input-sdl.so"
-emu.audio_plugin = "./mupen64plus-audio-sdl.so"
-emu.video_plugin = "./mupen64plus-video-glide64mk2.so"
+class Gym(object):
+    def __init__(self):
+        def message_callback(level, msg):
+            if level < 3:
+                print(f"{level}: {msg}")
 
-game = emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
+        data_path = join(getcwd(), "data")
 
-def menu_screen(frame):
-    game.set_fighters(Fighter.PIKACHU, None, Fighter.PIKACHU, None)
-    game.set_stage(Stage.DREAMLAND)
-    game.start_match()
+        self.emu = m64py.Emulator(
+                corelib_path="./libmupen64plus.so", 
+                config_path=data_path,
+                data_path=data_path)
+        self.emu.log_message_callback = message_callback
+        self.emu.frame_callback = self.frame_callback
+        #self.emu.rsp_plugin = "./mupen64plus-rsp-cxd4-sse2.so"
+        self.emu.rsp_plugin = "/usr/lib64/mupen64plus/mupen64plus-rsp-hle.so"
+        self.emu.input_plugin = "./mupen64plus-input-sdl.so"
+        self.emu.audio_plugin = "./mupen64plus-audio-sdl.so"
+        self.emu.video_plugin = "./mupen64plus-video-glide64mk2.so"
 
-def match_screen(frame):
-    print(f"Frame {frame} game state:")
+        self.game = self.emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
 
-    # Print out fighter related state
-    for fighter_idx in range(0, 1):
-        fighter = game.get_fighter(fighter_idx)
-        ID = fighter_idx*2+1
-        print(f"  P{ID} x, y           : {fighter.position}")
-        print(f"  P{ID} vx, vy         : {fighter.velocity}")
-        print(f"  P{ID} ax, ay         : {fighter.acceleration}")
-        print(f"  P{ID} orientation    : {fighter.orientation}")
-        print(f"  P{ID} movement frame : {fighter.movement_frame}")
-        print(f"  P{ID} movement state : {fighter.movement_state}")
-        print(f"  P{ID} shield         : {fighter.shield_health}")
-        print(f"  P{ID} shield recover : {fighter.shield_break_recovery_timer}")
-        print(f"  P{ID} percent        : {fighter.percent}%")
-        print(f"  P{ID} is grounded    : {fighter.is_grounded}")
-        print(f"  P{ID} is invincible  : {fighter.is_invincible}")
-        print(f"  P{ID} stocks         : {fighter.stocks}")
+        self.fighters = tuple()
+        self.stage = None
+        self.old_match_in_progress = False
 
-    # Print out stage related state
-    stage = game.get_stage()
-    print(f"whispy : {stage.whispy}")
+    def on_match_begin(self):
+        # can access game settings and load the appropriate AI here?
+        self.fighters = (self.game.get_fighter(1), self.game.get_fighter(3))
+        self.stage = self.game.get_stage()
+        self.fighters[0].controller.override = True
 
-def result_screen(frame):
-    # start new match? evaluate results?
-    pass
+    def on_match_end(self):
+        # load savestate for the next match? evaluate results?
+        pass
+
+    def on_next_frame(self, frame):
+        print("========================")
+        print(f"Frame {frame} game state")
+        print("========================")
+
+        self.fighters[0].controller.a = not self.fighters[0].controller.a
+
+        # Print out fighter related state
+        for n, fighter in enumerate(self.fighters):
+            print(f"Player {n+1} -------------")
+            print(f"    character      : {fighter.character}")
+            print(f"    x, y           : {fighter.position}")
+            print(f"    vx, vy         : {fighter.velocity}")
+            print(f"    ax, ay         : {fighter.acceleration}")
+            print(f"    orientation    : {fighter.orientation}")
+            print(f"    movement frame : {fighter.movement_frame}")
+            print(f"    movement state : {fighter.movement_state}")
+            print(f"    shield         : {fighter.shield_health}")
+            print(f"    shield recover : {fighter.shield_break_recovery_timer}")
+            print(f"    percent        : {fighter.percent}%")
+            print(f"    is grounded    : {fighter.is_grounded}")
+            print(f"    is invincible  : {fighter.is_invincible}")
+            print(f"    stocks         : {fighter.stocks}")
+            print("")
+
+        # Print out stage related state
+        print(f"whispy : {self.stage.whispy}")
+
+    def frame_callback(self, frame):
+        match_in_progress = self.game.is_match_in_progress
+
+        if match_in_progress and not self.old_match_in_progress:
+            self.old_match_in_progress = True
+            self.on_match_begin()
+        elif not match_in_progress and self.old_match_in_progress:
+            self.old_match_in_progress = False
+            self.on_match_end()
+        if match_in_progress:
+            self.on_next_frame(frame)
+
+    def run(self):
+        self.emu.execute()
 
 
-def frame_callback(frame):
-    #screen = game.current_screen
-    #if screen in (SSB64.MAIN_MENU, SSB64.CHARACTER_SELECT, SSB64.STAGE_SELECT):
-    #    menu_screen(frame)
-    #elif screen == SSB64.MATCH:
-    #    match_screen(frame)
-    #elif screen == SSB64.RESULT_SCREEN:
-    #    result_screen(frame)
-    #else:
-    #    print(f"Warning: Unknown screen {screen}")
-    try:
-        match_screen(frame)
-    except Exception as e:
-        print(e)
-
-emu.frame_callback = frame_callback
-emu.execute()
+gym = Gym()
+gym.run()
 

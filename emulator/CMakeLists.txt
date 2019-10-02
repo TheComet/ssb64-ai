@@ -67,6 +67,7 @@ add_subdirectory ("mupen64plus-input-ai-cuck")
 add_library (m64py SHARED
     "m64py/src/m64py.c"
     "m64py/src/m64py_ssb64_memory.c"
+    "m64py/src/m64py_type_Controller.c"
     "m64py/src/m64py_type_Emulator.c"
     "m64py/src/m64py_type_Fighter.c"
     "m64py/src/m64py_type_Fighter_Pikachu.c"
@@ -82,7 +83,7 @@ add_library (m64py SHARED
     "m64py/src/m64py_type_Fighter_Jigglypuff.c"
     "m64py/src/m64py_type_Fighter_Ness.c"
     "m64py/src/m64py_type_Plugin.c"
-    "m64py/src/m64py_type_Plugin_CuckedPlugin.c"
+    "m64py/src/m64py_type_Plugin_CuckedInputPlugin.c"
     "m64py/src/m64py_type_SSB64.c"
     "m64py/src/m64py_type_Stage.c"
     "m64py/src/m64py_type_Stage_DreamLand.c"

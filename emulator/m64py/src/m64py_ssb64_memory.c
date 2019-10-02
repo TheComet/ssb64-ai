@@ -136,6 +136,7 @@ static const struct match_settings_field_t
 
 static const unsigned int STOCK_COUNTERS = 0x801317CC;
 static const unsigned int WHISPY_BLOWING = 0x80304BFC;
+static const unsigned int CURRENT_SCREEN = 0x80046A4F;
 
 /* -------------------------------------------------------------------------- */
 m64py_memory_interface_t*
@@ -157,19 +158,16 @@ m64py_memory_interface_destroy(m64py_memory_interface_t* memory)
 }
 
 /* -------------------------------------------------------------------------- */
-void
-m64py_memory_set_items(m64py_memory_interface_t* memory, int enable)
+int
+m64py_memory_is_match_in_progress(m64py_memory_interface_t* memory)
 {
-
+    uint8_t current_screen = memory->corelib->DebugMemRead8(CURRENT_SCREEN);
+    if (current_screen == SCREEN_GAME)
+        return 1;
+    return 0;
 }
 
 /* -------------------------------------------------------------------------- */
-void
-m64py_memory_unlock_characters(m64py_memory_interface_t* memory)
-{
-
-}
-
 static uint32_t
 get_match_settings(m64py_memory_interface_t* memory, const char** error_msg)
 {
@@ -195,34 +193,12 @@ m64py_memory_match_settings_get_time(m64py_memory_interface_t* memory, uint8_t* 
 
 /* -------------------------------------------------------------------------- */
 int
-m64py_memory_match_settings_set_time(m64py_memory_interface_t* memory, uint8_t time_in_minutes, const char** error_msg)
-{
-    uint32_t match_settings;
-    if (!(match_settings = get_match_settings(memory, error_msg)))
-        return 0;
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.TIME, time_in_minutes);
-    return 1;
-}
-
-/* -------------------------------------------------------------------------- */
-int
 m64py_memory_match_settings_get_stocks(m64py_memory_interface_t* memory, uint8_t* stockcount, const char** error_msg)
 {
     uint32_t match_settings;
     if (!(match_settings = get_match_settings(memory, error_msg)))
         return 0;
     *stockcount = memory->corelib->DebugMemRead8(match_settings + MATCH_SETTINGS_FIELD.STOCK);
-    return 1;
-}
-
-/* -------------------------------------------------------------------------- */
-int
-m64py_memory_match_settings_set_stocks(m64py_memory_interface_t* memory, uint8_t stockcount, const char** error_msg)
-{
-    uint32_t match_settings;
-    if (!(match_settings = get_match_settings(memory, error_msg)))
-        return 0;
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.STOCK, stockcount);
     return 1;
 }
 
@@ -235,18 +211,6 @@ m64py_memory_match_settings_get_stocks_timed(m64py_memory_interface_t* memory, i
         return 0;
     *stockcount = memory->corelib->DebugMemRead8(match_settings + MATCH_SETTINGS_FIELD.STOCK);
     *time_in_minutes = memory->corelib->DebugMemRead8(match_settings + MATCH_SETTINGS_FIELD.TIME);
-    return 1;
-}
-
-/* -------------------------------------------------------------------------- */
-int
-m64py_memory_match_settings_set_stocks_timed(m64py_memory_interface_t* memory, int stockcount, int time_in_minutes, const char** error_msg)
-{
-    uint32_t match_settings;
-    if (!(match_settings = get_match_settings(memory, error_msg)))
-        return 0;
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.STOCK, stockcount);
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.TIME, time_in_minutes);
     return 1;
 }
 
@@ -265,19 +229,6 @@ m64py_memory_match_settings_get_fighter_character(m64py_memory_interface_t* memo
 
 /* -------------------------------------------------------------------------- */
 int
-m64py_memory_match_settings_set_fighter_character(m64py_memory_interface_t* memory, int player_slot, m64py_character_e character, const char** error_msg)
-{
-    uint32_t match_settings;
-    if (!(match_settings = get_match_settings(memory, error_msg)))
-        return 0;
-
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.PLAYER_DATA_OFFSET[player_slot - 1] + MATCH_SETTINGS_FIELD.PLAYER_DATA.CHARACTER, character);
-
-    return 1;
-}
-
-/* -------------------------------------------------------------------------- */
-int
 m64py_memory_match_settings_get_stage(m64py_memory_interface_t* memory, m64py_stage_e* stage, const char** error_msg)
 {
     uint32_t match_settings;
@@ -288,29 +239,12 @@ m64py_memory_match_settings_get_stage(m64py_memory_interface_t* memory, m64py_st
 }
 
 /* -------------------------------------------------------------------------- */
-int
-m64py_memory_match_settings_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage, const char** error_msg)
-{
-    uint32_t match_settings;
-    if (!(match_settings = get_match_settings(memory, error_msg)))
-        return 0;
-    memory->corelib->DebugMemWrite8(match_settings + MATCH_SETTINGS_FIELD.STAGE, stage);
-    return 1;
-}
-
-/* -------------------------------------------------------------------------- */
 void
 m64py_memory_read_whispy_wind(m64py_memory_interface_t* memory, float* blowing_direction)
 {
     uint32_t blow_raw;
     blow_raw = memory->corelib->DebugMemRead32(WHISPY_BLOWING);
     *blowing_direction = *(float*)&blow_raw;
-}
-
-/* -------------------------------------------------------------------------- */
-void
-m64py_memory_call_start_game(m64py_memory_interface_t* memory)
-{
 }
 
 /* -------------------------------------------------------------------------- */

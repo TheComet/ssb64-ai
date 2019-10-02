@@ -3,11 +3,13 @@
 
 #include "Python.h"
 #include "m64py_type_SSB64.h"
+#include "m64py_type_Controller.h"
 
 typedef struct m64py_Fighter
 {
     PyObject_HEAD
     m64py_SSB64* ssb64;
+    m64py_Controller* controller;
     int memory_index;
     int player_slot;
     uint32_t n64_memory_address;

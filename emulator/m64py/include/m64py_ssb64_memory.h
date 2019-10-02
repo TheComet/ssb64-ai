@@ -120,20 +120,12 @@ typedef struct m64py_memory_interface_t
 m64py_memory_interface_t* m64py_memory_interface_create(m64py_Emulator_corelib_interface* corelib, m64py_region_e region);
 void m64py_memory_interface_destroy(m64py_memory_interface_t* memory);
 
-void m64py_memory_set_items(m64py_memory_interface_t* memory, int enable);
-void m64py_memory_unlock_characters(m64py_memory_interface_t* memory);
+int m64py_memory_is_match_in_progress(m64py_memory_interface_t* memory);
 int m64py_memory_match_settings_get_time(m64py_memory_interface_t* memory, uint8_t* time_in_minutes, const char** error_msg);
-int m64py_memory_match_settings_set_time(m64py_memory_interface_t* memory, uint8_t time_in_minutes, const char** error_msg);
 int m64py_memory_match_settings_get_stocks(m64py_memory_interface_t* memory, uint8_t* stockcount, const char** error_msg);
-int m64py_memory_match_settings_set_stocks(m64py_memory_interface_t* memory, uint8_t stockcount, const char** error_msg);
 int m64py_memory_match_settings_get_stocks_timed(m64py_memory_interface_t* memory, int* stockcount, int* time_in_minutes, const char** error_msg);
-int m64py_memory_match_settings_set_stocks_timed(m64py_memory_interface_t* memory, int stockcount, int time_in_minutes, const char** error_msg);
 int m64py_memory_match_settings_get_fighter_character(m64py_memory_interface_t* memory, int player_slot, m64py_character_e* character, const char** error_msg);
-int m64py_memory_match_settings_set_fighter_character(m64py_memory_interface_t* memory, int player_slot, m64py_character_e character, const char** error_msg);
 int m64py_memory_match_settings_get_stage(m64py_memory_interface_t* memory, m64py_stage_e* stage, const char** error_msg);
-int m64py_memory_match_settings_set_stage(m64py_memory_interface_t* memory, m64py_stage_e stage, const char** error_msg);
-
-void m64py_memory_call_start_game(m64py_memory_interface_t* memory);
 
 int m64py_memory_get_fighter_address(m64py_memory_interface_t* memory, int fighter_memory_index, uint32_t* fighter_address, const char** error_msg);
 void m64py_memory_read_fighter_character(m64py_memory_interface_t* memory, uint32_t fighter_address, m64py_character_e* fighter);

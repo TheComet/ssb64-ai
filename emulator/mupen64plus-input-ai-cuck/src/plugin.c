@@ -31,6 +31,11 @@ static struct {
     ptr_RenderCallback RenderCallback;
 } ActualInputPlugin = {0};
 
+static struct {
+    int Override;
+    BUTTONS Buttons;
+} Controller[4];
+
 /* This is the entry point from m64py's point of view */
 EXPORT m64p_error CALL PluginStartupCucked(m64p_dynlib_handle CoreLibHandle,
                                            void* Context, void (*DebugCallback)(void *, int, const char *),
@@ -88,8 +93,42 @@ EXPORT m64p_error CALL PluginShutdownCucked(void)
 
     osal_dynlib_close(ActualInputPlugin.Handle);
     memset(&ActualInputPlugin, 0, sizeof(ActualInputPlugin));
+    memset(Controller, 0, sizeof(Controller));
 
     return M64ERR_SUCCESS;
+}
+
+EXPORT int CALL GetControllerOverride(int ControllerIdx)
+{
+    if (ControllerIdx < 0 || ControllerIdx > 3)
+        return 0;
+
+    return Controller[ControllerIdx].Override;
+}
+
+EXPORT void CALL SetControllerOverride(int ControllerIdx, int enable)
+{
+    if (ControllerIdx < 0 || ControllerIdx > 3)
+        return;
+
+    Controller[ControllerIdx].Override = enable;
+}
+
+EXPORT BUTTONS CALL GetControllerButtons(int ControllerIdx)
+{
+    BUTTONS ret = {0};
+    if (ControllerIdx < 0 || ControllerIdx > 3)
+        return ret;
+
+    return Controller[ControllerIdx].Buttons;
+}
+
+EXPORT void CALL SetControllerButtons(int ControllerIdx, BUTTONS buttons)
+{
+    if (ControllerIdx < 0 || ControllerIdx > 3)
+        return;
+
+    Controller[ControllerIdx].Buttons = buttons;
 }
 
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
@@ -161,9 +200,18 @@ EXPORT void CALL ControllerCommand(int Control, unsigned char *Command)
             the controller state.
   output:   none
 *******************************************************************/
-EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
+EXPORT void CALL GetKeys( int ControllerIdx, BUTTONS *Keys )
 {
-    ActualInputPlugin.GetKeys(Control, Keys);
+    if (ControllerIdx < 0 || ControllerIdx > 3)
+        return;
+
+    if (Controller[ControllerIdx].Override)
+    {
+        memcpy(Keys, &Controller[ControllerIdx].Buttons, sizeof(BUTTONS));
+        return;
+    }
+
+    ActualInputPlugin.GetKeys(ControllerIdx, Keys);
 }
 
 /******************************************************************
