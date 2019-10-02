@@ -592,7 +592,7 @@ Emulator_setlog_message_callback(m64py_Emulator* self, PyObject* callable)
 
 /* ------------------------------------------------------------------------- */
 static PyGetSetDef Emulator_getsetters[] = {
-    {"input_plugin",         (getter)Emulator_getinput_plugin,         (setter)Emulator_setinput_plugin,         RSP_PLUGIN_DOC, NULL},
+    {"input_plugin",         (getter)Emulator_getinput_plugin,         (setter)Emulator_setinput_plugin,         INPUT_PLUGIN_DOC, NULL},
     {"audio_plugin",         (getter)Emulator_getaudio_plugin,         (setter)Emulator_setaudio_plugin,         AUDIO_PLUGIN_DOC, NULL},
     {"video_plugin",         (getter)Emulator_getvideo_plugin,         (setter)Emulator_setvideo_plugin,         VIDEO_PLUGIN_DOC, NULL},
     {"rsp_plugin",           (getter)Emulator_getrsp_plugin,           (setter)Emulator_setrsp_plugin,           RSP_PLUGIN_DOC, NULL},
@@ -659,7 +659,7 @@ start_plugin(m64py_Emulator* emu, PyObject* maybePlugin)
     m64p_error result;
     m64py_Plugin* plugin;
 
-    if (!m64py_Plugin_CheckExact(maybePlugin))
+    if (!PyObject_IsInstance(maybePlugin, (PyObject*)&m64py_PluginType))
         return 0;
     plugin = (m64py_Plugin*)maybePlugin;
 

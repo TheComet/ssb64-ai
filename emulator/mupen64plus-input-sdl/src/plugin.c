@@ -84,7 +84,7 @@ SController controller[4];   // 4 controllers
 /* static data definitions */
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_CuckedPluginInit = 0;
+static int l_PluginInit = 0;
 
 static unsigned short button_bits[] = {
     0x0001,  // R_DPAD
@@ -143,7 +143,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     int i, ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion;
     int joyWasInit;
 
-    if (l_CuckedPluginInit)
+    if (l_PluginInit)
         return M64ERR_ALREADY_INIT;
 
     /* first thing is to set the callback function for debug info */
@@ -223,20 +223,20 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     if (!joyWasInit)
         SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 
-    l_CuckedPluginInit = 1;
+    l_PluginInit = 1;
     return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-    if (!l_CuckedPluginInit)
+    if (!l_PluginInit)
         return M64ERR_NOT_INIT;
 
     /* reset some local variables */
     l_DebugCallback = NULL;
     l_DebugCallContext = NULL;
 
-    l_CuckedPluginInit = 0;
+    l_PluginInit = 0;
     return M64ERR_SUCCESS;
 }
 

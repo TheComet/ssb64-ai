@@ -37,6 +37,7 @@ EXPORT m64p_error CALL PluginStartupCucked(m64p_dynlib_handle CoreLibHandle,
                                            const char* ActualPluginPath)
 {
     m64p_error result;
+    (void)CoreLibHandle;
 
     if (ActualInputPlugin.Handle)
         FAIL(M64ERR_ALREADY_INIT, double_init);
@@ -73,12 +74,8 @@ EXPORT m64p_error CALL PluginStartupCucked(m64p_dynlib_handle CoreLibHandle,
     REQUIRE_FUNC(RomClosed);
     OPTIONAL_FUNC(RenderCallback);
 
-    if ((result = ActualInputPlugin.PluginStartup(CoreLibHandle, Context, DebugCallback)) != M64ERR_SUCCESS)
-        FAIL(result, actual_plugin_startup_failed);
-
     return M64ERR_SUCCESS;
 
-    actual_plugin_startup_failed :
     getproc_failed               : osal_dynlib_close(ActualInputPlugin.Handle);
     open_actual_lib_failed       : memset(&ActualInputPlugin, 0, sizeof(ActualInputPlugin));
     double_init                  : return result;
@@ -89,7 +86,6 @@ EXPORT m64p_error CALL PluginShutdownCucked(void)
     if (!ActualInputPlugin.Handle)
         return M64ERR_NOT_INIT;
 
-    ActualInputPlugin.PluginShutdown();
     osal_dynlib_close(ActualInputPlugin.Handle);
     memset(&ActualInputPlugin, 0, sizeof(ActualInputPlugin));
 
@@ -99,15 +95,15 @@ EXPORT m64p_error CALL PluginShutdownCucked(void)
 EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Context,
                                    void (*DebugCallback)(void *, int, const char *))
 {
-    (void)CoreLibHandle;
-    (void)Context;
-    (void)DebugCallback;
-    return M64ERR_SUCCESS;
+    if (ActualInputPlugin.Handle == NULL)
+        return M64ERR_SUCCESS;
+
+    return ActualInputPlugin.PluginStartup(CoreLibHandle, Context, DebugCallback);
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-    return M64ERR_SUCCESS;
+    return ActualInputPlugin.PluginShutdown();
 }
 
 EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *PluginVersion, int *APIVersion, const char **PluginNamePtr, int *Capabilities)
