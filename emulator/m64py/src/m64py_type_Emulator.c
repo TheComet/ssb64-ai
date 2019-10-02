@@ -300,21 +300,22 @@ static PyMethodDef Emulator_methods[] = {
 };
 
 /* ------------------------------------------------------------------------- */
+#define OLD_PLUGIN_STARTED_SUCCESSFULLY  -1
+#define OLD_PLUGIN_FAILED_TO_START_AGAIN -2
 static int
 try_attaching_plugin(m64py_Emulator* self, PyObject* maybe_current_plugin, m64py_Plugin* new_plugin)
 {
-    /* If there is currently a plugin attached, need to un-attach it */
-    stop_plugin(self, maybe_current_plugin);
-
     /* Try attaching new plugin. If that fails, attach the old one again. If
      * attaching the old one fails, well... That shouldn't ever happen */
+
+    stop_plugin(self, maybe_current_plugin);
+
     if (start_plugin(self, (PyObject*)new_plugin) == 0)
         return 0;
 
-    /* Start old plugin again */
     if (start_plugin(self, maybe_current_plugin) != 0)
-        return -2;
-    return -1;
+        return OLD_PLUGIN_FAILED_TO_START_AGAIN;
+    return OLD_PLUGIN_STARTED_SUCCESSFULLY;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -329,12 +330,13 @@ try_attaching_plugin(m64py_Emulator* self, PyObject* maybe_current_plugin, m64py
  * then the current plugin is replaced with Py_None.
  */
 static int
-try_loading_and_replacing_plugin(m64py_Emulator* self,
-                                 PyObject** old_maybe_plugin,
-                                 PyObject* path_to_plugin,
-                                 m64p_plugin_type plugin_type)
-{
-    m64py_Plugin* new_plugin;
+try_loading_and_replacing_plugin(
+    m64py_Emulator* self,
+    PyObject* path_to_plugin,
+    m64p_plugin_type plugin_type,
+    PyObject** old_maybe_plugin
+) {
+    PyObject* new_plugin;
     PyObject* py_plugin_type;
     PyObject* py_corelib_handle;
     PyObject* plugin_args;
@@ -362,7 +364,7 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
     else
         PluginType = &m64py_PluginType;
 
-    new_plugin = (m64py_Plugin*)PyObject_CallObject((PyObject*)PluginType, plugin_args);
+    new_plugin = PyObject_CallObject((PyObject*)PluginType, plugin_args);
     Py_DECREF(plugin_args);
     goto fail_if_new_plugin_is_null;
 
@@ -371,38 +373,33 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
     alloc_plugin_type_failed    : return -1;
     fail_if_new_plugin_is_null  : if (new_plugin == NULL) return -1;
 
-    /* Plugin should be attached if emulator is running */
+    /* Emulator expects all loaded plugins to also be attached */
     if (self->is_rom_loaded)
     {
-        switch (try_attaching_plugin(self, *old_maybe_plugin, new_plugin))
+        switch (try_attaching_plugin(self, *old_maybe_plugin, (m64py_Plugin*)new_plugin))
         {
-            case -2 : {
-                /* Old plugin failed to start, even though it worked before
-                 * In this case I think we have no other option than to set
+            case OLD_PLUGIN_FAILED_TO_START_AGAIN : {
+                /* In this case I think we have no other option than to set
                  * the current plugin to Py_None */
-                PyObject* tmp = *old_maybe_plugin;
+                Py_DECREF(new_plugin);
                 Py_INCREF(Py_None);
-                *old_maybe_plugin = Py_None;
-                Py_DECREF(tmp);
-            } /* fallthrough */
+                new_plugin = Py_None;
+            } break;
 
-            case -1 :
-                /* New plugin failed to start, so old plugin was re-attached
-                 * again */
-                goto attach_plugin_failed;
+            case OLD_PLUGIN_STARTED_SUCCESSFULLY : {
+                Py_DECREF(new_plugin);
+                return -1;
+            }
 
             default : break;
         }
     }
 
-    /* Swap new plugin object with current one */
+    /* Replace current plugin with new plugin */
     PyObject* tmp = *old_maybe_plugin;
     *old_maybe_plugin = (PyObject*)new_plugin;
     Py_DECREF(tmp);
     return 0;
-
-    attach_plugin_failed    : Py_DECREF(new_plugin);
-    return -1;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -429,7 +426,7 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
 
     if (PyUnicode_Check(value))
     {
-        return try_loading_and_replacing_plugin(self, pmember, value, plugin_type);
+        return try_loading_and_replacing_plugin(self, value, plugin_type, pmember);
     }
     else if (value == Py_None)
     {
