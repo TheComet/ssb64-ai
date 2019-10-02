@@ -342,7 +342,7 @@ static PyObject*
 Fighter_getstocks(m64py_Fighter* self, void* closure)
 {
     uint8_t stocks;
-    m64py_memory_read_fighter_stocks(self->ssb64->memory_interface, self->memory_index, &stocks);
+    m64py_memory_read_fighter_stocks(self->ssb64->memory_interface, self->player_slot - 1, &stocks);
     return PyLong_FromLong(stocks);
 }
 static int

@@ -110,7 +110,7 @@ PyDoc_STRVAR(CUCKED_INPUT_PLUGIN_DOC,
 "the AI can control individual players");
 PyTypeObject m64py_CuckedInputPluginType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "m64py.CuckedInputPlugin",         /* tp_name */
+    "m64py.CuckedInputPlugin",    /* tp_name */
     sizeof(m64py_CuckedInputPlugin),   /* tp_basicsize */
     0,                            /* tp_itemsize */
     (destructor)CuckedInputPlugin_dealloc,  /* tp_dealloc */
@@ -129,7 +129,7 @@ PyTypeObject m64py_CuckedInputPluginType = {
     0,                            /* tp_setattro */
     0,                            /* tp_as_buffer */
     Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    CUCKED_INPUT_PLUGIN_DOC,            /* tp_doc */
+    CUCKED_INPUT_PLUGIN_DOC,      /* tp_doc */
     0,                            /* tp_traverse */
     0,                            /* tp_clear */
     0,                            /* tp_richcompare */
@@ -139,7 +139,7 @@ PyTypeObject m64py_CuckedInputPluginType = {
     0,                            /* tp_methods */
     0,                            /* tp_members */
     0,                            /* tp_getset */
-    &m64py_PluginType,            /* tp_base */
+    0,                            /* tp_base */
     0,                            /* tp_dict */
     0,                            /* tp_descr_get */
     0,                            /* tp_descr_set */
@@ -153,6 +153,7 @@ PyTypeObject m64py_CuckedInputPluginType = {
 int
 m64py_CuckedInputPluginType_init(void)
 {
+    m64py_CuckedInputPluginType.tp_base = &m64py_PluginType;
     if (PyType_Ready(&m64py_CuckedInputPluginType) < 0)
         return -1;
 

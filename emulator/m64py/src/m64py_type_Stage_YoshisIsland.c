@@ -57,7 +57,7 @@ PyTypeObject m64py_YoshisIslandType = {
     0,                            /* tp_methods */
     0,                            /* tp_members */
     0,                            /* tp_getset */
-    &m64py_StageType,             /* tp_base */
+    0,                            /* tp_base */
     0,                            /* tp_dict */
     0,                            /* tp_descr_get */
     0,                            /* tp_descr_set */
@@ -71,6 +71,7 @@ PyTypeObject m64py_YoshisIslandType = {
 int
 m64py_YoshisIslandType_init(void)
 {
+    m64py_YoshisIslandType.tp_base = &m64py_StageType;
     if (PyType_Ready(&m64py_YoshisIslandType) < 0)
         return -1;
     return 0;

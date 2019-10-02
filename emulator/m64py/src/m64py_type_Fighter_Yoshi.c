@@ -67,7 +67,7 @@ PyTypeObject m64py_YoshiType = {
     0,                            /* tp_methods */
     0,                            /* tp_members */
     0,                            /* tp_getset */
-    &m64py_FighterType,           /* tp_base */
+    0,                            /* tp_base */
     0,                            /* tp_dict */
     0,                            /* tp_descr_get */
     0,                            /* tp_descr_set */
@@ -81,6 +81,7 @@ PyTypeObject m64py_YoshiType = {
 int
 m64py_YoshiType_init(void)
 {
+    m64py_YoshiType.tp_base = &m64py_FighterType;
     if (PyType_Ready(&m64py_YoshiType) < 0)
         return -1;
     return 0;
