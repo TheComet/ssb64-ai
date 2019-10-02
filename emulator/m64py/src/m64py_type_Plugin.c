@@ -14,6 +14,60 @@ Plugin_dealloc(m64py_Plugin* self)
 }
 
 /* ------------------------------------------------------------------------- */
+static char* kwds_names[] = {
+    "path_to_plugin",
+    "type",
+    "corelib_handle",
+    NULL
+};
+static PyObject*
+Plugin_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
+{
+    const char* path_to_plugin;
+    PyObject* dont_care;
+    m64p_plugin_type PluginType = (m64p_plugin_type)0;
+    int PluginVersion = 0;
+
+    m64py_Plugin* self = (m64py_Plugin*)type->tp_alloc(type, 0);
+    if (self == NULL)
+        goto alloc_self_failed;
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "siO", kwds_names, &path_to_plugin, &self->type, &dont_care))
+        goto fail;
+
+    /* Try to open shared library */
+    if (osal_dynlib_open(&self->handle, path_to_plugin) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to open shared library \"%s\"", path_to_plugin);
+        goto fail;
+    }
+
+    /* Load function pointers */
+#define X(name) \
+        if ((self->name = osal_dynlib_getproc(self->handle, #name)) == NULL) \
+        { \
+            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from plugin \"%s\"", #name, path_to_plugin); \
+            goto fail; \
+        }
+    M64PY_PLUGIN_FUNCTIONS
+#undef X
+
+    self->PluginGetVersion(&PluginType, &PluginVersion, NULL, &self->name, NULL);
+    if (PluginType != self->type)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Shared library \"%s\" is of type %d, but we expected %d instead.", path_to_plugin, PluginType, self->type);
+        goto fail;
+    }
+
+    /* the front-end doesn't talk to the plugins, so we don't care about the plugin version or api version */
+
+    return (PyObject*)self;
+
+    fail              : Py_DECREF(self);
+    alloc_self_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(PLUGIN_DOC,
 "Base class for plugins that the core library loads.");
 PyTypeObject m64py_PluginType = {
@@ -54,62 +108,15 @@ PyTypeObject m64py_PluginType = {
     0,                            /* tp_dictoffset */
     0,                            /* tp_init */
     0,                            /* tp_alloc */
-    0,                            /* tp_new */
+    Plugin_new,                   /* tp_new */
 };
 
 /* ------------------------------------------------------------------------- */
 int
 m64py_PluginType_init(void)
 {
-    m64py_PluginType.tp_new = PyType_GenericNew;
     if (PyType_Ready(&m64py_PluginType) < 0)
         return -1;
 
     return 0;
-}
-
-/* ------------------------------------------------------------------------- */
-m64py_Plugin*
-m64py_Plugin_load(const char* path_to_plugin, m64p_plugin_type type, m64p_dynlib_handle corelib_handle)
-{
-    m64p_plugin_type PluginType = (m64p_plugin_type)0;
-    int PluginVersion = 0;
-
-    m64py_Plugin* plugin = (m64py_Plugin*)PyObject_CallObject((PyObject*)&m64py_PluginType, NULL);
-    if (plugin == NULL)
-        goto alloc_plugin_failed;
-    plugin->type = type;
-
-    /* Try to open shared library */
-    if (osal_dynlib_open(&plugin->handle, path_to_plugin) != M64ERR_SUCCESS)
-    {
-        PyErr_Format(PyExc_RuntimeError, "Failed to open shared library \"%s\"", path_to_plugin);
-        goto open_lib_failed;
-    }
-
-    /* Load function pointers */
-#define X(name) \
-        if ((plugin->name = osal_dynlib_getproc(plugin->handle, #name)) == NULL) \
-        { \
-            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from plugin \"%s\"", #name, path_to_plugin); \
-            goto load_functions_failed; \
-        }
-    M64PY_PLUGIN_FUNCTIONS
-#undef X
-
-    plugin->PluginGetVersion(&PluginType, &PluginVersion, NULL, &plugin->name, NULL);
-    if (PluginType != type)
-    {
-        PyErr_Format(PyExc_RuntimeError, "Shared library \"%s\" is of type %d, but we expected %d instead.", path_to_plugin, PluginType, type);
-        goto version_mismatch;
-    }
-
-    /* the front-end doesn't talk to the plugins, so we don't care about the plugin version or api version */
-
-    return plugin;
-
-    version_mismatch      :
-    load_functions_failed : osal_dynlib_close(plugin->handle);
-    open_lib_failed       : Py_DECREF(plugin);
-    alloc_plugin_failed   : return NULL;
 }

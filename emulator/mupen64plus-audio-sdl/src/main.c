@@ -77,7 +77,7 @@
 /* local variables */
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
+static int l_CuckedPluginInit = 0;
 static m64p_handle l_ConfigAudio;
 #ifdef USE_AUDIORESOURCE
 static audioresource_t *l_audioresource = NULL;
@@ -149,7 +149,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     int ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion;
     float fConfigParamsVersion = 0.0f;
 
-    if (l_PluginInit)
+    if (l_CuckedPluginInit)
         return M64ERR_ALREADY_INIT;
 
     /* first thing is to set the callback function for debug info */
@@ -246,13 +246,13 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     }
 #endif
 
-    l_PluginInit = 1;
+    l_CuckedPluginInit = 1;
     return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return M64ERR_NOT_INIT;
 
     /* reset some local variables */
@@ -264,7 +264,7 @@ EXPORT m64p_error CALL PluginShutdown(void)
     audioresource_free(l_audioresource);
 #endif
 
-    l_PluginInit = 0;
+    l_CuckedPluginInit = 0;
     return M64ERR_SUCCESS;
 }
 
@@ -312,7 +312,7 @@ static unsigned int dacrate2freq(unsigned int vi_clock, uint32_t dacrate)
 
 EXPORT void CALL AiDacrateChanged(int SystemType)
 {
-    if (!l_PluginInit || l_sdl_backend == NULL)
+    if (!l_CuckedPluginInit || l_sdl_backend == NULL)
         return;
 
     unsigned int frequency = dacrate2freq(vi_clock_from_system_type(SystemType), *AudioInfo.AI_DACRATE_REG);
@@ -323,7 +323,7 @@ EXPORT void CALL AiDacrateChanged(int SystemType)
 
 EXPORT void CALL AiLenChanged(void)
 {
-    if (!l_PluginInit || l_sdl_backend == NULL)
+    if (!l_CuckedPluginInit || l_sdl_backend == NULL)
         return;
 
     sdl_push_samples(l_sdl_backend, AudioInfo.RDRAM + (*AudioInfo.AI_DRAM_ADDR_REG & 0xffffff), *AudioInfo.AI_LEN_REG);
@@ -333,7 +333,7 @@ EXPORT void CALL AiLenChanged(void)
 
 EXPORT int CALL InitiateAudio(AUDIO_INFO Audio_Info)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return 0;
 
     AudioInfo = Audio_Info;
@@ -343,7 +343,7 @@ EXPORT int CALL InitiateAudio(AUDIO_INFO Audio_Info)
 
 EXPORT int CALL RomOpen(void)
 {
-    if (!l_PluginInit || l_sdl_backend != NULL)
+    if (!l_CuckedPluginInit || l_sdl_backend != NULL)
         return 0;
 
     VolDelta = ConfigGetParamInt(l_ConfigAudio, "VOLUME_ADJUST");
@@ -357,7 +357,7 @@ EXPORT int CALL RomOpen(void)
 
 EXPORT void CALL RomClosed(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return;
 
     release_sdl_backend(l_sdl_backend);
@@ -370,7 +370,7 @@ EXPORT void CALL ProcessAList(void)
 
 EXPORT void CALL SetSpeedFactor(int percentage)
 {
-    if (!l_PluginInit || l_sdl_backend == NULL)
+    if (!l_CuckedPluginInit || l_sdl_backend == NULL)
         return;
 
     sdl_set_speed_factor(l_sdl_backend, percentage);
@@ -448,7 +448,7 @@ static void VolumeCommit(void)
 
 EXPORT void CALL VolumeMute(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return;
 
     // Store the volume level in order to restore it later
@@ -462,7 +462,7 @@ EXPORT void CALL VolumeMute(void)
 
 EXPORT void CALL VolumeUp(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return;
 
     VolumeSetLevel(VolumeGetUnmutedLevel() + VolDelta);
@@ -470,7 +470,7 @@ EXPORT void CALL VolumeUp(void)
 
 EXPORT void CALL VolumeDown(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return;
 
     VolumeSetLevel(VolumeGetUnmutedLevel() - VolDelta);
@@ -483,7 +483,7 @@ EXPORT int CALL VolumeGetLevel(void)
 
 EXPORT void CALL VolumeSetLevel(int level)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return;
 
     //if muted, unmute first

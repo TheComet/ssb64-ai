@@ -11,6 +11,7 @@ endif ()
 ###############################################################################
 
 add_subdirectory ("mupen64plus-core")
+set (MUPEN64PLUS_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
 
 function (build_mupen_component NAME)
     set (ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
@@ -57,6 +58,8 @@ foreach (COMPONENT ${MUPEN_COMPONENTS})
     build_mupen_component (${COMPONENT})
 endforeach ()
 
+add_subdirectory ("mupen64plus-input-ai-cuck")
+
 ###############################################################################
 # Python bindings
 ###############################################################################
@@ -79,6 +82,7 @@ add_library (m64py SHARED
     "m64py/src/m64py_type_Fighter_Jigglypuff.c"
     "m64py/src/m64py_type_Fighter_Ness.c"
     "m64py/src/m64py_type_Plugin.c"
+    "m64py/src/m64py_type_Plugin_CuckedPlugin.c"
     "m64py/src/m64py_type_SSB64.c"
     "m64py/src/m64py_type_Stage.c"
     "m64py/src/m64py_type_Stage_DreamLand.c"
@@ -95,7 +99,7 @@ add_library (m64py SHARED
 target_include_directories (m64py
     PRIVATE
         "m64py/include"
-        "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
+        ${MUPEN64PLUS_CORE_INCLUDE_DIR})
 add_dependencies (m64py ${MUPEN_COMPONENTS})
 set_target_properties (m64py PROPERTIES
     PREFIX ""

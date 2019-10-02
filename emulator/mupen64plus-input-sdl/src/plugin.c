@@ -84,7 +84,7 @@ SController controller[4];   // 4 controllers
 /* static data definitions */
 static void (*l_DebugCallback)(void *, int, const char *) = NULL;
 static void *l_DebugCallContext = NULL;
-static int l_PluginInit = 0;
+static int l_CuckedPluginInit = 0;
 
 static unsigned short button_bits[] = {
     0x0001,  // R_DPAD
@@ -139,11 +139,11 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
                                    void (*DebugCallback)(void *, int, const char *))
 {
     ptr_CoreGetAPIVersions CoreAPIVersionFunc;
-    
+
     int i, ConfigAPIVersion, DebugAPIVersion, VidextAPIVersion;
     int joyWasInit;
 
-    if (l_PluginInit)
+    if (l_CuckedPluginInit)
         return M64ERR_ALREADY_INIT;
 
     /* first thing is to set the callback function for debug info */
@@ -157,7 +157,7 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
         DebugMessage(M64MSG_ERROR, "Core emulator broken; no CoreAPIVersionFunc() function found.");
         return M64ERR_INCOMPATIBLE;
     }
-    
+
     (*CoreAPIVersionFunc)(&ConfigAPIVersion, &DebugAPIVersion, &VidextAPIVersion, NULL);
     if ((ConfigAPIVersion & 0xffff0000) != (CONFIG_API_VERSION & 0xffff0000) || ConfigAPIVersion < CONFIG_API_VERSION)
     {
@@ -223,20 +223,20 @@ EXPORT m64p_error CALL PluginStartup(m64p_dynlib_handle CoreLibHandle, void *Con
     if (!joyWasInit)
         SDL_QuitSubSystem(SDL_INIT_JOYSTICK);
 
-    l_PluginInit = 1;
+    l_CuckedPluginInit = 1;
     return M64ERR_SUCCESS;
 }
 
 EXPORT m64p_error CALL PluginShutdown(void)
 {
-    if (!l_PluginInit)
+    if (!l_CuckedPluginInit)
         return M64ERR_NOT_INIT;
 
     /* reset some local variables */
     l_DebugCallback = NULL;
     l_DebugCallContext = NULL;
 
-    l_PluginInit = 0;
+    l_CuckedPluginInit = 0;
     return M64ERR_SUCCESS;
 }
 
@@ -251,7 +251,7 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
 
     if (APIVersion != NULL)
         *APIVersion = INPUT_PLUGIN_API_VERSION;
-    
+
     if (PluginNamePtr != NULL)
         *PluginNamePtr = PLUGIN_NAME;
 
@@ -259,7 +259,7 @@ EXPORT m64p_error CALL PluginGetVersion(m64p_plugin_type *PluginType, int *Plugi
     {
         *Capabilities = 0;
     }
-                    
+
     return M64ERR_SUCCESS;
 }
 
@@ -481,7 +481,7 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
     int b, axis_val;
     SDL_Event event;
     unsigned char mstate;
-    
+
     SDL_PumpEvents();
 
     // Handle keyboard input first
@@ -500,7 +500,7 @@ EXPORT void CALL GetKeys( int Control, BUTTONS *Keys )
                 controller[b].joystick = SDL_JoystickOpen(controller[b].device);
         }
     }
-    
+
     // read joystick state
     SDL_JoystickUpdate();
 

@@ -1,5 +1,6 @@
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Plugin.h"
+#include "m64py_type_Plugin_CuckedPlugin.h"
 #include "m64py_type_SSB64.h"
 #include <structmember.h>
 #include <frameobject.h>
@@ -334,19 +335,41 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
                                  m64p_plugin_type plugin_type)
 {
     m64py_Plugin* new_plugin;
-    const char* filepath_ascii;
+    PyObject* py_plugin_type;
+    PyObject* py_corelib_handle;
+    PyObject* plugin_args;
+    PyTypeObject* PluginType;
 
-    /* A path to the plugin shared lib was specified. Get path as ASCII
-     * string */
-    PyObject* bytes = PyUnicode_AsASCIIString(path_to_plugin);
-    if (bytes == NULL)
-        goto convert_to_ascii_failed;
-    filepath_ascii = PyBytes_AS_STRING(bytes);
+    /* Build argument list for constructing a plugin */
+    py_plugin_type = PyLong_FromLong(plugin_type);
+    if (py_plugin_type == NULL)
+        goto alloc_plugin_type_failed;
+    py_corelib_handle = PyLong_FromVoidPtr(self->corelib.handle);
+    if (py_corelib_handle == NULL)
+        goto alloc_corelib_handle_failed;
+    plugin_args = PyTuple_New(3);
+    if (plugin_args == NULL)
+        goto alloc_plugin_args_failed;
 
-    /* Try to load the shared library and all necessary functions */
-    new_plugin = m64py_Plugin_load(filepath_ascii, plugin_type, self->corelib.handle);
-    if (new_plugin == NULL)
-        goto load_plugin_failed;
+    Py_INCREF(path_to_plugin);
+    PyTuple_SET_ITEM(plugin_args, 0, path_to_plugin);
+    PyTuple_SET_ITEM(plugin_args, 1, py_plugin_type);
+    PyTuple_SET_ITEM(plugin_args, 2, py_corelib_handle);
+
+    /* Input plugin is handled specially (gets intercepted so AI can take over) */
+    if (plugin_type == M64PLUGIN_INPUT)
+        PluginType = &m64py_CuckedPluginType;
+    else
+        PluginType = &m64py_PluginType;
+
+    new_plugin = (m64py_Plugin*)PyObject_CallObject((PyObject*)PluginType, plugin_args);
+    Py_DECREF(plugin_args);
+    goto fail_if_new_plugin_is_null;
+
+    alloc_plugin_args_failed    : Py_DECREF(py_corelib_handle);
+    alloc_corelib_handle_failed : Py_DECREF(py_plugin_type);
+    alloc_plugin_type_failed    : return -1;
+    fail_if_new_plugin_is_null  : if (new_plugin == NULL) return -1;
 
     /* Plugin should be attached if emulator is running */
     if (self->is_rom_loaded)
@@ -372,9 +395,6 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
         }
     }
 
-    /* Don't need ASCII string anymore */
-    Py_DECREF(bytes);
-
     /* Swap new plugin object with current one */
     PyObject* tmp = *old_maybe_plugin;
     *old_maybe_plugin = (PyObject*)new_plugin;
@@ -382,8 +402,7 @@ try_loading_and_replacing_plugin(m64py_Emulator* self,
     return 0;
 
     attach_plugin_failed    : Py_DECREF(new_plugin);
-    load_plugin_failed      : Py_DECREF(bytes);
-    convert_to_ascii_failed : return -1;
+    return -1;
 }
 
 /* ------------------------------------------------------------------------- */

@@ -42,7 +42,4 @@ extern PyTypeObject m64py_PluginType;
 int
 m64py_PluginType_init(void);
 
-m64py_Plugin*
-m64py_Plugin_load(const char* path_to_plugin, m64p_plugin_type type, m64p_dynlib_handle corelib_handle);
-
 #endif /* M64PY_TYPE_PLUGIN_H */
