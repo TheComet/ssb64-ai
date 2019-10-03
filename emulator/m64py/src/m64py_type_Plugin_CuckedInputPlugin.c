@@ -106,47 +106,16 @@ CuckedInputPlugin_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 
 /* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(CUCKED_INPUT_PLUGIN_DOC,
-"Handles loading the cuck input plugin (intercepts the normal input plugin so)\n"
-"the AI can control individual players");
+"Handles loading the cuck input plugin (intercepts the normal input plugin so\n"
+"the AI can control individual players)");
 PyTypeObject m64py_CuckedInputPluginType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "m64py.CuckedInputPlugin",    /* tp_name */
-    sizeof(m64py_CuckedInputPlugin),   /* tp_basicsize */
-    0,                            /* tp_itemsize */
-    (destructor)CuckedInputPlugin_dealloc,  /* tp_dealloc */
-    0,                            /* tp_print */
-    0,                            /* tp_getattr */
-    0,                            /* tp_setattr */
-    0,                            /* tp_reserved */
-    0,                            /* tp_repr */
-    0,                            /* tp_as_number */
-    0,                            /* tp_as_sequence */
-    0,                            /* tp_as_mapping */
-    0,                            /* tp_hash  */
-    0,                            /* tp_call */
-    0,                            /* tp_str */
-    0,                            /* tp_getattro */
-    0,                            /* tp_setattro */
-    0,                            /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    CUCKED_INPUT_PLUGIN_DOC,      /* tp_doc */
-    0,                            /* tp_traverse */
-    0,                            /* tp_clear */
-    0,                            /* tp_richcompare */
-    0,                            /* tp_weaklistoffset */
-    0,                            /* tp_iter */
-    0,                            /* tp_iternext */
-    0,                            /* tp_methods */
-    0,                            /* tp_members */
-    0,                            /* tp_getset */
-    0,                            /* tp_base */
-    0,                            /* tp_dict */
-    0,                            /* tp_descr_get */
-    0,                            /* tp_descr_set */
-    0,                            /* tp_dictoffset */
-    0,                            /* tp_init */
-    0,                            /* tp_alloc */
-    CuckedInputPlugin_new,             /* tp_new */
+    .tp_name = "m64py.CuckedInputPlugin",
+    .tp_basicsize = sizeof(m64py_CuckedInputPlugin),
+    .tp_dealloc = (destructor)CuckedInputPlugin_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_doc = CUCKED_INPUT_PLUGIN_DOC,
+    .tp_new = CuckedInputPlugin_new,
 };
 
 /* ------------------------------------------------------------------------- */

@@ -1,3 +1,4 @@
+#include "m64py_module.h"
 #include "m64py_type_Emulator.h"
 #include "m64py_type_Plugin.h"
 #include "m64py_type_Plugin_CuckedInputPlugin.h"
@@ -24,6 +25,14 @@ static int
 start_plugin(m64py_Emulator* emu, PyObject* maybePlugin);
 static void
 stop_plugin(m64py_Emulator* emu, PyObject* maybePlugin);
+
+static int
+try_loading_and_replacing_plugin(
+    m64py_Emulator* self,
+    PyObject* path_to_plugin,
+    m64p_plugin_type plugin_type,
+    PyObject** old_maybe_plugin
+);
 
 /* ------------------------------------------------------------------------- */
 static void
@@ -151,15 +160,94 @@ Emulator_dealloc(m64py_Emulator* self)
 }
 
 /* ------------------------------------------------------------------------- */
+static int
+try_load_corelib(m64py_Emulator* self, const char* config_path, const char* data_path, const char* corelib_file)
+{
+    m64p_error result;
+    PyObject* py_corelib_file = NULL;
+
+    /* If corelib path wasn't provided, load default */
+    if (corelib_file == NULL)
+    {
+        py_corelib_file = m64py_prepend_module_path_to_filename("libmupen64plus.so");
+        if (py_corelib_file == NULL)
+            return -1;
+        corelib_file = PyUnicode_AsUTF8(py_corelib_file);
+    }
+
+    /* Try to load mupen64plus corelib */
+    result = osal_dynlib_open(&self->corelib.handle, corelib_file);
+    Py_XDECREF(py_corelib_file);
+    if (result != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\": %s", corelib_file, osal_dynlib_last_error());
+        return -1;
+    }
+
+    /* Load all function pointers */
+#define X(name) \
+        if ((self->corelib.name = (ptr_##name)osal_dynlib_getproc(self->corelib.handle, #name)) == NULL) \
+        { \
+            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from core library \"%s\"", #name, corelib_file); \
+            return -1; \
+        }
+    M64PY_CORELIB_FUNCTIONS
+#undef X
+
+    /* Init corelib */
+    if ((result = self->corelib.CoreStartup(
+            CORE_API_VERSION,
+            config_path,
+            data_path,
+            self, (ptr_DebugCallback)log_message_callback,
+            NULL, NULL  /* State change callback */
+        )) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to initialize corelib. Error code %d", result);
+        return -1;
+    }
+
+    self->corelib.CoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, frame_callback);
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+try_load_default_plugins(m64py_Emulator* self)
+{
+    int success = 0;
+    PyObject *input_path, *video_path, *audio_path, *rsp_path;
+    if ((input_path = m64py_prepend_module_path_to_filename("mupen64plus-input-sdl.so")) == NULL) goto input_path_failed;
+    if ((video_path = m64py_prepend_module_path_to_filename("mupen64plus-video-glide64mk2.so")) == NULL) goto video_path_failed;
+    if ((audio_path = m64py_prepend_module_path_to_filename("mupen64plus-audio-sdl.so")) == NULL) goto audio_path_failed;
+    if ((rsp_path   = m64py_prepend_module_path_to_filename("mupen64plus-rsp-hle.so")) == NULL) goto rsp_path_failed;
+
+    success = 1;
+    if (!try_loading_and_replacing_plugin(self, input_path, M64PLUGIN_INPUT, &self->input_plugin))
+        success = 0;
+    if (!try_loading_and_replacing_plugin(self, video_path, M64PLUGIN_GFX, &self->video_plugin))
+        success = 0;
+    if (!try_loading_and_replacing_plugin(self, audio_path, M64PLUGIN_AUDIO, &self->audio_plugin))
+        success = 0;
+    if (!try_loading_and_replacing_plugin(self, rsp_path, M64PLUGIN_RSP, &self->rsp_plugin))
+        success = 0;
+
+                        Py_DECREF(rsp_path);
+    rsp_path_failed   : Py_DECREF(audio_path);
+    audio_path_failed : Py_DECREF(video_path);
+    video_path_failed : Py_DECREF(input_path);
+    input_path_failed : return success;
+}
+
+/* ------------------------------------------------------------------------- */
 static PyObject*
 Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
     const char *corelib_path, *config_path, *data_path;
-    m64p_error result;
     static char* kwds_str[] = {
-        "corelib_path",
         "config_path",
         "data_path",
+        "corelib_path",
         NULL
     };
 
@@ -171,10 +259,9 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         return NULL;
     }
 
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "sss", kwds_str, &corelib_path, &config_path, &data_path))
+    corelib_path = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss|s", kwds_str, &config_path, &data_path, &corelib_path))
         return NULL;
-
-    printf("config_path: %s\ndata_path: %s\n", config_path, data_path);
 
     g_emu = (m64py_Emulator*)type->tp_alloc(type, 0);
     if (g_emu == NULL)
@@ -189,44 +276,17 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     g_emu->frame_callback       = (Py_INCREF(Py_None), Py_None);
     g_emu->log_message_callback = (Py_INCREF(Py_None), Py_None);
 
-    /* Try to load mupen64plus corelib */
-    if ((result = osal_dynlib_open(&g_emu->corelib.handle, corelib_path) != M64ERR_SUCCESS))
-    {
-        PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\": %s", corelib_path, osal_dynlib_last_error());
-        goto open_corelib_failed;
-    }
+    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) == -1)
+        goto init_failed;
 
-    /* Load all function pointers */
-#define X(name) \
-        if ((g_emu->corelib.name = (ptr_##name)osal_dynlib_getproc(g_emu->corelib.handle, #name)) == NULL) \
-        { \
-            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from core library \"%s\"", #name, corelib_path); \
-            goto load_corelib_functions_failed; \
-        }
-    M64PY_CORELIB_FUNCTIONS
-#undef X
-
-    /* Init corelib */
-    if ((result = g_emu->corelib.CoreStartup(
-            CORE_API_VERSION,
-            config_path,
-            data_path,
-            g_emu, (ptr_DebugCallback)log_message_callback,
-            NULL, NULL  /* State change callback */
-        )) != M64ERR_SUCCESS)
-    {
-        PyErr_Format(PyExc_RuntimeError, "Failed to initialize corelib. Error code %d", result);
-        goto corelib_startup_failed;
-    }
-
-    g_emu->corelib.CoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, frame_callback);
+    /* Try to load default plugins */
+    if (try_load_default_plugins(g_emu) == -1)
+        goto init_failed;
 
     return (PyObject*)g_emu;
 
-    corelib_startup_failed        :
-    load_corelib_functions_failed : osal_dynlib_close(g_emu->corelib.handle);
-    open_corelib_failed           : Py_DECREF(g_emu); g_emu = NULL;
-    alloc_self_failed             : return NULL;
+    init_failed       : Py_DECREF(g_emu); g_emu = NULL;
+    alloc_self_failed : return NULL;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -407,6 +467,16 @@ static int
 set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plugin_type)
 {
     PyObject** pmember;
+
+    /* Can't do this if emulator is running */
+    m64p_emu_state emu_state = M64EMU_RUNNING;
+    self->corelib.CoreDoCommand(M64CMD_CORE_STATE_QUERY, M64CORE_EMU_STATE, &emu_state);
+    if (emu_state != M64EMU_STOPPED)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Can't change plugins while emulator is running.");
+        return -1;
+    }
+
     switch (plugin_type)
     {
         case M64PLUGIN_INPUT : pmember = &self->input_plugin; break;
@@ -431,6 +501,7 @@ set_plugin_attribute(m64py_Emulator* self, PyObject* value, m64p_plugin_type plu
     else if (value == Py_None)
     {
         PyObject* tmp = *pmember;
+        stop_plugin(self, tmp);
         Py_INCREF(value);
         *pmember = value;
         Py_DECREF(tmp);
@@ -591,6 +662,29 @@ Emulator_setlog_message_callback(m64py_Emulator* self, PyObject* callable)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(SPEED_LIMITER_DOC,
+"Set to True to run the emulator at 60 fps. Set to false to run as fast as possible.");
+static PyObject*
+Emulator_getspeed_limiter(m64py_Emulator* self, void* closure)
+{
+    int trueness;
+    self->corelib.CoreDoCommand(M64CMD_CORE_STATE_QUERY, M64CORE_SPEED_LIMITER, &trueness);
+    if (trueness)
+        Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+static int
+Emulator_setspeed_limiter(m64py_Emulator* self, PyObject* value, void* closure)
+{
+    int trueness = PyObject_IsTrue(value);
+    if (trueness == -1)
+        return -1;
+
+    self->corelib.CoreDoCommand(M64CMD_CORE_STATE_SET, M64CORE_SPEED_LIMITER, &trueness);
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
 static PyGetSetDef Emulator_getsetters[] = {
     {"input_plugin",         (getter)Emulator_getinput_plugin,         (setter)Emulator_setinput_plugin,         INPUT_PLUGIN_DOC, NULL},
     {"audio_plugin",         (getter)Emulator_getaudio_plugin,         (setter)Emulator_setaudio_plugin,         AUDIO_PLUGIN_DOC, NULL},
@@ -598,56 +692,30 @@ static PyGetSetDef Emulator_getsetters[] = {
     {"rsp_plugin",           (getter)Emulator_getrsp_plugin,           (setter)Emulator_setrsp_plugin,           RSP_PLUGIN_DOC, NULL},
     {"frame_callback",       (getter)Emulator_getframe_callback,       (setter)Emulator_setframe_callback,       FRAME_CALLBACK_DOC, NULL},
     {"log_message_callback", (getter)Emulator_getlog_message_callback, (setter)Emulator_setlog_message_callback, LOG_MESSAGE_CALLBACK_DOC, NULL},
+    {"speed_limiter",        (getter)Emulator_getspeed_limiter,        (setter)Emulator_setspeed_limiter,        SPEED_LIMITER_DOC, NULL},
     {NULL}
 };
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(EMULATOR_DOC,
+"");
 PyTypeObject m64py_EmulatorType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "m64py.Emulator",             /* tp_name */
-    sizeof(m64py_Emulator),       /* tp_basicsize */
-    0,                            /* tp_itemsize */
-    (destructor)Emulator_dealloc, /* tp_dealloc */
-    0,                            /* tp_print */
-    0,                            /* tp_getattr */
-    0,                            /* tp_setattr */
-    0,                            /* tp_reserved */
-    0,                            /* tp_repr */
-    0,                            /* tp_as_number */
-    0,                            /* tp_as_sequence */
-    0,                            /* tp_as_mapping */
-    0,                            /* tp_hash  */
-    0,                            /* tp_call */
-    0,                            /* tp_str */
-    0,                            /* tp_getattro */
-    0,                            /* tp_setattro */
-    0,                            /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,  /* tp_flags */
-    "Emulator objects",           /* tp_doc */
-    0,                            /* tp_traverse */
-    0,                            /* tp_clear */
-    0,                            /* tp_richcompare */
-    0,                            /* tp_weaklistoffset */
-    0,                            /* tp_iter */
-    0,                            /* tp_iternext */
-    Emulator_methods,             /* tp_methods */
-    0,                            /* tp_members */
-    Emulator_getsetters,          /* tp_getset */
-    0,                            /* tp_base */
-    0,                            /* tp_dict */
-    0,                            /* tp_descr_get */
-    0,                            /* tp_descr_set */
-    0,                            /* tp_dictoffset */
-    0,                            /* tp_init */
-    0,                            /* tp_alloc */
-    Emulator_new,                 /* tp_new */
+    .tp_name = "m64py.Emulator",
+    .tp_basicsize = sizeof(m64py_Emulator),
+    .tp_dealloc = (destructor)Emulator_dealloc, /* tp_dealloc */
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_doc = EMULATOR_DOC,
+    .tp_methods = Emulator_methods,
+    .tp_getset = Emulator_getsetters,
+    .tp_new = Emulator_new
 };
 
 /* ------------------------------------------------------------------------- */
 int
 m64py_EmulatorType_init(void)
 {
-    if (PyType_Ready(&m64py_EmulatorType) < 0)
+    if (PyType_Ready((PyTypeObject*)&m64py_EmulatorType) < 0)
         return -1;
     return 0;
 }
@@ -688,10 +756,10 @@ static void
 stop_plugin(m64py_Emulator* emu, PyObject* maybePlugin)
 {
     m64py_Plugin* plugin;
-    if (!m64py_Plugin_CheckExact(maybePlugin))
+    if (!PyObject_IsInstance(maybePlugin, (PyObject*)&m64py_PluginType))
         return;
-    plugin = (m64py_Plugin*)maybePlugin;
 
+    plugin = (m64py_Plugin*)maybePlugin;
     emu->corelib.CoreDetachPlugin(plugin->type);
     plugin->PluginShutdown();
 }

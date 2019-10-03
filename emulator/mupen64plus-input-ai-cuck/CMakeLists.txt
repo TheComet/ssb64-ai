@@ -1,5 +1,5 @@
 project ("mupen64plus-input-ai-cuck"
-    LANGUAGES C CXX
+    LANGUAGES C
     VERSION 1.0.0)
 
 set (GNU_CFLAGS -Wall -Wextra -Werror)

@@ -63,7 +63,9 @@ try_get_cucked_input(m64py_Controller* self)
 /* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(CONTROLLER_OVERRIDE_DOC,
 "Set this to True to disable controller inputs from the real plugin and enable\n"
-"inputs from code");
+"inputs from code\n\n"
+"Note that overriding controls only works if the fighter is being controlled\n"
+"by a human player.");
 static PyObject*
 Controller_getoverride(m64py_Controller* self, void* closure)
 {
@@ -91,85 +93,153 @@ Controller_setoverride(m64py_Controller* self, PyObject* value, void* closure)
 }
 
 /* ------------------------------------------------------------------------- */
-PyDoc_STRVAR(CONTROLLER_A_DOC, "A button: True or False");
+#define GETSET_BUTTONS_LIST                                                   \
+    X(A_BUTTON, a, "A button")                                                \
+    X(B_BUTTON, b, "B button")                                                \
+    X(L_CBUTTON, cl, "C Left")                                                \
+    X(R_CBUTTON, cr, "C Right")                                               \
+    X(U_CBUTTON, cu, "C Up")                                                  \
+    X(D_CBUTTON, cd, "C Down")                                                \
+    X(L_DPAD, dl, "D-Pad Left")                                               \
+    X(R_DPAD, dr, "D-Pad Right")                                              \
+    X(U_DPAD, du, "D-Pad Up")                                                 \
+    X(D_DPAD, dd, "D-Pad Down")                                               \
+    X(L_TRIG, l, "Left Trigger")                                              \
+    X(R_TRIG, r, "Right Trigger")                                             \
+    X(START_BUTTON, s, "Start button")                                        \
+    X(Z_TRIG, z, "Z Trigger")
+
+#define GET_BUTTON(name)                                                      \
+    m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);               \
+    if (cuck == NULL)                                                         \
+        return NULL;                                                          \
+                                                                              \
+    if (cuck->GetControllerButtons(self->player_slot - 1).name)               \
+        Py_RETURN_TRUE;                                                       \
+    Py_RETURN_FALSE;
+
+#define SET_BUTTON(name)                                                      \
+    int trueness;                                                             \
+    BUTTONS buttons;                                                          \
+    m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);               \
+    if (cuck == NULL)                                                         \
+        return -1;                                                            \
+                                                                              \
+    if ((trueness = PyObject_IsTrue(value)) < 0)                              \
+        return -1;                                                            \
+                                                                              \
+    buttons = cuck->GetControllerButtons(self->player_slot - 1);              \
+    buttons.name = trueness;                                                  \
+    cuck->SetControllerButtons(self->player_slot - 1, buttons);               \
+    return 0;
+
+#define X(mupen, python, desc)                                                \
+    PyDoc_STRVAR(CONTROLLER_##python##_DOC, desc ": True or False");          \
+    static PyObject* Controller_get##python(m64py_Controller* self, void* closure) { GET_BUTTON(mupen); } \
+    static int Controller_set##python(m64py_Controller* self, PyObject* value, void* closure) { SET_BUTTON(mupen); }
+GETSET_BUTTONS_LIST
+#undef X
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(CONTROLLER_JOY_X_DOC,
+"X axis of the joystick, a value between -1.0 and 1.0.\n\n"
+"Note: Internally, the value is stored as a signed 8-bit value, which means the\n"
+"full range is from -128 to 127. To fix this asymmetry, the value is clamped\n"
+"to -127 to 127 before converting it to a float.");
 static PyObject*
-Controller_geta(m64py_Controller* self, void* closure)
+Controller_getx(m64py_Controller* self, void* closure)
 {
+    int8_t x_axis;
     m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);
     if (cuck == NULL)
         return NULL;
 
-    if (cuck->GetControllerButtons(self->player_slot - 1).A_BUTTON)
-        Py_RETURN_TRUE;
-    Py_RETURN_FALSE;
+    x_axis = cuck->GetControllerButtons(self->player_slot - 1).X_AXIS;
+    if (x_axis < -127)
+        x_axis = -127;
+    return PyFloat_FromDouble((double)x_axis / 127.0);
 }
 static int
-Controller_seta(m64py_Controller* self, PyObject* value, void* closure)
+Controller_setx(m64py_Controller* self, PyObject* py_value, void* closure)
 {
-    int trueness;
+    double value;
     BUTTONS buttons;
     m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);
     if (cuck == NULL)
         return -1;
 
-    if ((trueness = PyObject_IsTrue(value)) < 0)
+    if ((value = PyFloat_AsDouble(py_value)) == -1.0 && PyErr_Occurred())
         return -1;
 
     buttons = cuck->GetControllerButtons(self->player_slot - 1);
-    buttons.A_BUTTON = trueness;
+    buttons.X_AXIS = (int8_t)(value * 127);
+    cuck->SetControllerButtons(self->player_slot - 1, buttons);
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(CONTROLLER_JOY_Y_DOC,
+"Y axis of the joystick, a value between -1.0 and 1.0.\n\n"
+"Note: Internally, the value is stored as a signed 8-bit value, which means the\n"
+"full range is from -128 to 127. To fix this asymmetry, the value is clamped\n"
+"to -127 to 127 before converting it to a float.");
+static PyObject*
+Controller_gety(m64py_Controller* self, void* closure)
+{
+    int8_t y_axis;
+    m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);
+    if (cuck == NULL)
+        return NULL;
+
+    y_axis = cuck->GetControllerButtons(self->player_slot - 1).Y_AXIS;
+    if (y_axis < -127)
+        y_axis = -127;
+    return PyFloat_FromDouble((double)y_axis / 127.0);
+}
+static int
+Controller_sety(m64py_Controller* self, PyObject* py_value, void* closure)
+{
+    double value;
+    BUTTONS buttons;
+    m64py_CuckedInputPlugin* cuck = try_get_cucked_input(self);
+    if (cuck == NULL)
+        return -1;
+
+    if ((value = PyFloat_AsDouble(py_value)) == -1.0 && PyErr_Occurred())
+        return -1;
+
+    buttons = cuck->GetControllerButtons(self->player_slot - 1);
+    buttons.Y_AXIS = (int8_t)(value * 127);
     cuck->SetControllerButtons(self->player_slot - 1, buttons);
     return 0;
 }
 
 /* ------------------------------------------------------------------------- */
 PyGetSetDef Controller_getset[] = {
+#define X(mupen, python, desc) \
+    {#python,    (getter)Controller_get##python, (setter)Controller_set##python, CONTROLLER_##python##_DOC, NULL},
+    GETSET_BUTTONS_LIST
+#undef X
     {"override", (getter)Controller_getoverride, (setter)Controller_setoverride, CONTROLLER_OVERRIDE_DOC, NULL},
-    {"a",        (getter)Controller_geta,        (setter)Controller_seta,        CONTROLLER_A_DOC, NULL},
+    {"x",        (getter)Controller_getx,        (setter)Controller_setx,        CONTROLLER_JOY_X_DOC, NULL},
+    {"y",        (getter)Controller_gety,        (setter)Controller_sety,        CONTROLLER_JOY_Y_DOC, NULL},
     {NULL}
 };
 
 /* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(CONTROLLER_DOC,
-"Provides character specific state for Captain Falcon.");
+"Provides a method to override the controls of a fighter. Note that the fighter\n"
+"must have been selected as a human player for this to work. The human's inputs\n"
+"are replaced with those set by code when setting Controller.override = True");
 PyTypeObject m64py_ControllerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
-    "m64py.Controller",           /* tp_name */
-    sizeof(m64py_Controller),     /* tp_basicsize */
-    0,                            /* tp_itemsize */
-    (destructor)Controller_dealloc, /* tp_dealloc */
-    0,                            /* tp_print */
-    0,                            /* tp_getattr */
-    0,                            /* tp_setattr */
-    0,                            /* tp_reserved */
-    0,                            /* tp_repr */
-    0,                            /* tp_as_number */
-    0,                            /* tp_as_sequence */
-    0,                            /* tp_as_mapping */
-    0,                            /* tp_hash  */
-    0,                            /* tp_call */
-    0,                            /* tp_str */
-    0,                            /* tp_getattro */
-    0,                            /* tp_setattro */
-    0,                            /* tp_as_buffer */
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /* tp_flags */
-    CONTROLLER_DOC,               /* tp_doc */
-    0,                            /* tp_traverse */
-    0,                            /* tp_clear */
-    0,                            /* tp_richcompare */
-    0,                            /* tp_weaklistoffset */
-    0,                            /* tp_iter */
-    0,                            /* tp_iternext */
-    0,                            /* tp_methods */
-    0,                            /* tp_members */
-    Controller_getset,            /* tp_getset */
-    0,                            /* tp_base */
-    0,                            /* tp_dict */
-    0,                            /* tp_descr_get */
-    0,                            /* tp_descr_set */
-    0,                            /* tp_dictoffset */
-    0,                            /* tp_init */
-    0,                            /* tp_alloc */
-    Controller_new,               /* tp_new */
+    .tp_name = "m64py.Controller",
+    .tp_basicsize = sizeof(m64py_Controller),
+    .tp_dealloc = (destructor)Controller_dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE,
+    .tp_doc = CONTROLLER_DOC,
+    .tp_getset = Controller_getset,
+    .tp_new = Controller_new,
 };
 
 /* ------------------------------------------------------------------------- */

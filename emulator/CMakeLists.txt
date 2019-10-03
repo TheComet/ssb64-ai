@@ -65,7 +65,7 @@ add_subdirectory ("mupen64plus-input-ai-cuck")
 ###############################################################################
 
 add_library (m64py SHARED
-    "m64py/src/m64py.c"
+    "m64py/src/m64py_module.c"
     "m64py/src/m64py_ssb64_memory.c"
     "m64py/src/m64py_type_Controller.c"
     "m64py/src/m64py_type_Emulator.c"
