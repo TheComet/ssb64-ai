@@ -5,6 +5,7 @@
 #include "osal_dynamiclib.h"
 #include "m64p_frontend.h"
 #include "m64p_debugger.h"
+#include "m64p_ai.h"
 
 #define m64py_EmulatorType_CheckExact(op) \
     (Py_TYPE(op) == &m64py_EmulatorType)
@@ -15,6 +16,7 @@
     X(CoreAttachPlugin) \
     X(CoreDetachPlugin) \
     X(CoreDoCommand) \
+    X(AISetVICallback) \
     X(DebugMemRead32) \
     X(DebugMemRead16) \
     X(DebugMemRead8) \
@@ -40,6 +42,7 @@ typedef struct m64py_Emulator
     PyObject* rsp_plugin;
     PyObject* frame_callback;
     PyObject* log_message_callback;
+    PyObject* vi_callback;
     char is_rom_loaded;
 } m64py_Emulator;
 

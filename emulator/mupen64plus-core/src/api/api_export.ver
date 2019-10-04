@@ -1,4 +1,5 @@
 { global:
+AISetVICallback;
 ConfigExternalGetParameter;
 ConfigExternalOpen;
 ConfigExternalClose;

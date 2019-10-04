@@ -140,6 +140,29 @@ frame_callback(int current_frame)
 
 /* ------------------------------------------------------------------------- */
 static void
+vi_callback(m64py_Emulator* self)
+{
+    PyObject* result;
+
+    if (g_emu->vi_callback == Py_None)
+        return;
+
+    result = PyObject_CallObject(g_emu->vi_callback, NULL);
+    if (result == NULL)
+    {
+        /* We want to catch all exceptions except for keyboard interrupts */
+        if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt))
+            catch_python_exception();
+        g_emu->corelib.CoreDoCommand(M64CMD_STOP, 0, NULL);
+    }
+    else
+        Py_DECREF(result);
+
+    return;
+}
+
+/* ------------------------------------------------------------------------- */
+static void
 Emulator_dealloc(m64py_Emulator* self)
 {
     Py_XDECREF(self->log_message_callback);
@@ -151,7 +174,8 @@ Emulator_dealloc(m64py_Emulator* self)
 
     if (self->corelib.handle)
     {
-        self->corelib.CoreShutdown();
+        if (self->corelib.CoreShutdown)
+            self->corelib.CoreShutdown();
         osal_dynlib_close(self->corelib.handle);
     }
     g_emu = 0;
@@ -208,6 +232,8 @@ try_load_corelib(m64py_Emulator* self, const char* config_path, const char* data
     }
 
     self->corelib.CoreDoCommand(M64CMD_SET_FRAME_CALLBACK, 0, frame_callback);
+    self->corelib.AISetVICallback((void(*)(void*))vi_callback, self);
+
     return 0;
 }
 
@@ -222,15 +248,12 @@ try_load_default_plugins(m64py_Emulator* self)
     if ((audio_path = m64py_prepend_module_path_to_filename("mupen64plus-audio-sdl.so")) == NULL) goto audio_path_failed;
     if ((rsp_path   = m64py_prepend_module_path_to_filename("mupen64plus-rsp-hle.so")) == NULL) goto rsp_path_failed;
 
-    success = 1;
-    if (!try_loading_and_replacing_plugin(self, input_path, M64PLUGIN_INPUT, &self->input_plugin))
-        success = 0;
-    if (!try_loading_and_replacing_plugin(self, video_path, M64PLUGIN_GFX, &self->video_plugin))
-        success = 0;
-    if (!try_loading_and_replacing_plugin(self, audio_path, M64PLUGIN_AUDIO, &self->audio_plugin))
-        success = 0;
-    if (!try_loading_and_replacing_plugin(self, rsp_path, M64PLUGIN_RSP, &self->rsp_plugin))
-        success = 0;
+    success = (
+        try_loading_and_replacing_plugin(self, input_path, M64PLUGIN_INPUT, &self->input_plugin) == 0 &&
+        try_loading_and_replacing_plugin(self, video_path, M64PLUGIN_GFX, &self->video_plugin) == 0 &&
+        try_loading_and_replacing_plugin(self, audio_path, M64PLUGIN_AUDIO, &self->audio_plugin) == 0 &&
+        try_loading_and_replacing_plugin(self, rsp_path, M64PLUGIN_RSP, &self->rsp_plugin) == 0
+    );
 
                         Py_DECREF(rsp_path);
     rsp_path_failed   : Py_DECREF(audio_path);
@@ -275,6 +298,7 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     g_emu->rsp_plugin           = (Py_INCREF(Py_None), Py_None);
     g_emu->frame_callback       = (Py_INCREF(Py_None), Py_None);
     g_emu->log_message_callback = (Py_INCREF(Py_None), Py_None);
+    g_emu->vi_callback          = (Py_INCREF(Py_None), Py_None);
 
     if (try_load_corelib(g_emu, config_path, data_path, corelib_path) == -1)
         goto init_failed;
@@ -662,6 +686,33 @@ Emulator_setlog_message_callback(m64py_Emulator* self, PyObject* callable)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(VI_CALLBACK_DOC,
+"");
+static PyObject*
+Emulator_getvi_callback(m64py_Emulator* self, void* closure)
+{
+    return Py_INCREF(self->vi_callback), self->vi_callback;
+}
+static int
+Emulator_setvi_callback(m64py_Emulator* self, PyObject* callable)
+{
+    PyObject* tmp;
+
+    if (callable != Py_None && !PyCallable_Check(callable))
+    {
+        PyErr_SetString(PyExc_TypeError, "Callback needs to be a callable object (it isn't)");
+        return -1;
+    }
+
+    tmp = self->vi_callback;
+    Py_INCREF(callable);
+    self->vi_callback = callable;
+    Py_DECREF(tmp);
+
+    return 0;
+}
+
+/* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(SPEED_LIMITER_DOC,
 "Set to True to run the emulator at 60 fps. Set to false to run as fast as possible.");
 static PyObject*
@@ -692,6 +743,7 @@ static PyGetSetDef Emulator_getsetters[] = {
     {"rsp_plugin",           (getter)Emulator_getrsp_plugin,           (setter)Emulator_setrsp_plugin,           RSP_PLUGIN_DOC, NULL},
     {"frame_callback",       (getter)Emulator_getframe_callback,       (setter)Emulator_setframe_callback,       FRAME_CALLBACK_DOC, NULL},
     {"log_message_callback", (getter)Emulator_getlog_message_callback, (setter)Emulator_setlog_message_callback, LOG_MESSAGE_CALLBACK_DOC, NULL},
+    {"vi_callback",          (getter)Emulator_getvi_callback,          (setter)Emulator_setvi_callback,          VI_CALLBACK_DOC, NULL},
     {"speed_limiter",        (getter)Emulator_getspeed_limiter,        (setter)Emulator_setspeed_limiter,        SPEED_LIMITER_DOC, NULL},
     {NULL}
 };

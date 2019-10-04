@@ -34,25 +34,25 @@ m64py_prepend_module_path_to_filename(const char* filename)
 {
     PyObject *m, *module_file, *ospath, *split_tuple, *path_to_module, *py_filename, *result = NULL;
 
-#define JMP_IF_NULL(o, msg)                                                         \
-    if (o == NULL) goto o##_failed;
+#define JMP_IF_NULL(o, msg) \
+    if (o == NULL) goto o##_failed
 
     m = PyState_FindModule(&m64py_module);  /* borrowed ref */
-    JMP_IF_NULL(m, "Failed to get m64py module")
+    JMP_IF_NULL(m, "Failed to get m64py module");
 
     module_file = PyModule_GetFilenameObject(m);  /* new ref */
-    JMP_IF_NULL(module_file, "Failed to get filename object from module")
+    JMP_IF_NULL(module_file, "Failed to get filename object from module");
 
     ospath = PyImport_ImportModule("os.path");  /* new ref */
-    JMP_IF_NULL(ospath, "Failed to get filename object from module")
+    JMP_IF_NULL(ospath, "Failed to get filename object from module");
 
     split_tuple = PyObject_CallMethod(ospath, "split", "(O)", module_file); /* new ref */
-    JMP_IF_NULL(split_tuple, "Failed to get filename object from module")
+    JMP_IF_NULL(split_tuple, "Failed to get filename object from module");
 
     path_to_module = PyTuple_GET_ITEM(split_tuple, 0); /* borrowed ref */
 
     py_filename = PyUnicode_FromString(filename); /* new ref */
-    JMP_IF_NULL(py_filename, "Failed to get filename object from module")
+    JMP_IF_NULL(py_filename, "Failed to get filename object from module");
 
     result = PyObject_CallMethod(ospath, "join", "(OO)", path_to_module, py_filename);
 

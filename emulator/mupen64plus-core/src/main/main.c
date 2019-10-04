@@ -43,6 +43,7 @@
 #include "api/m64p_config.h"
 #include "api/m64p_types.h"
 #include "api/m64p_vidext.h"
+#include "api/ai.h"
 #include "api/vidext.h"
 #include "backends/api/audio_out_backend.h"
 #include "backends/api/clock_backend.h"
@@ -900,7 +901,9 @@ void new_vi(void)
 #endif
 
     gs_apply_cheats(&g_cheat_ctx);
-
+#if defined(M64P_AI)
+    AIDoVICallback();
+#endif
     apply_speed_limiter();
     main_check_inputs();
 

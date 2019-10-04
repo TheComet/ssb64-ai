@@ -25,6 +25,7 @@ option (M64P_DBG_COUNT "print R4300 instruction count totals (64-bit dynarec onl
 option (M64P_DBG_COMPARE "enable core-synchronized r4300 debugging" OFF)
 option (M64P_DBG_TIMING "print timing data" OFF)
 option (M64P_DBG_PROFILE "dump profiling data for r4300 dynarec to data file" OFF)
+option (M64P_AI "Enable AI modifications from the SSB64-AI project" ON)
 
 test_big_endian (M64P_BIG_ENDIAN)
 
@@ -95,6 +96,7 @@ target_link_libraries (oglft
         Freetype::Freetype)
 
 add_library (mupen64plus-core SHARED
+    "src/api/ai.c"
     "src/api/callbacks.c"
     "src/api/common.c"
     "src/api/config.c"
@@ -195,6 +197,7 @@ target_compile_options (mupen64plus-core
 target_link_options (mupen64plus-core
     PRIVATE $<$<C_COMPILER_ID:GNU>:${GNU_LDFLAGS}>)
 target_compile_definitions (mupen64plus-core
+    PRIVATE M64P_CORE_PROTOTYPES
     PRIVATE $<$<BOOL:${M64P_BIG_ENDIAN}>:M64P_BIG_ENDIAN>
     PRIVATE $<$<BOOL:${M64P_OSD}>:M64P_OSD>
     PRIVATE $<$<BOOL:${M64P_NO_ASM}>:NO_ASM>
@@ -206,7 +209,8 @@ target_compile_definitions (mupen64plus-core
     PRIVATE $<$<BOOL:${M64P_DBG_COMPARE}>:COMPARE_CORE>
     PRIVATE $<$<BOOL:${M64P_DBG_COUNT}>:COUNT_INSTR>
     PRIVATE $<$<BOOL:${M64P_DBG_CORE}>:CORE_DBG>
-    PRIVATE $<$<BOOL:${M64P_DBG_TIMING}>:PROFILE>)
+    PRIVATE $<$<BOOL:${M64P_DBG_TIMING}>:PROFILE>
+    PRIVATE $<$<BOOL:${M64P_AI}>:M64P_AI>)
 set_target_properties (mupen64plus-core PROPERTIES
     VERSION ${PROJECT_VERSION}
     OUTPUT_NAME mupen64plus
