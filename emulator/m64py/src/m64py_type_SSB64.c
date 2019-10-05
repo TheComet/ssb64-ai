@@ -25,6 +25,18 @@
 #include <stdint.h>
 #include <stdio.h>
 
+struct cheat_t
+{
+    const char* name;
+    m64p_cheat_code code[2];
+    int code_length;
+};
+
+static struct cheat_t cheats_usa[] = {
+    {"Unlock Everything", {{0x800A4937, 0x00FF}, {0x810A4938, 0x0FF0}}, 2},
+    {NULL}
+};
+
 /* ------------------------------------------------------------------------- */
 static void
 SSB64_dealloc(m64py_SSB64* self)
@@ -51,6 +63,7 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     long rom_size;
     void* rom_buffer;
     m64p_error result;
+    struct cheat_t* cheat;
 
     self = (m64py_SSB64*)type->tp_alloc(type, 0);
     if (self == NULL)
@@ -102,6 +115,19 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     /* With ROM successfully loaded, we can now start all plugins */
     if (m64py_Emulator_start_plugins(self->emu) != 0)
         goto start_plugins_failed;
+
+    for (cheat = cheats_usa; cheat->name; ++cheat)
+        if (self->emu->corelib.CoreAddCheat(cheat->name, cheat->code, cheat->code_length) != M64ERR_SUCCESS)
+        {
+            PyErr_Format(PyExc_RuntimeError, "Failed to add cheat %s", cheat->name);
+            goto start_plugins_failed;
+        }
+    for (cheat = cheats_usa; cheat->name; ++cheat)
+        if (self->emu->corelib.CoreCheatEnabled(cheat->name, 1) != M64ERR_SUCCESS)
+        {
+            PyErr_Format(PyExc_RuntimeError, "Failed to enable cheat %s", cheat->name);
+            goto start_plugins_failed;
+        }
 
     /* Cleanup - corelib copies buffer so these aren't needed */
     free(rom_buffer);

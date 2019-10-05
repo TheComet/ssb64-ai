@@ -368,9 +368,59 @@ Emulator_stop(m64py_Emulator* self, PyObject* args)
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(SAVE_STATE_DOC, "save_state(filename)\n--\n\n"
+"Saves the current emulator state to a file. The state can then be loaded back\n"
+"at a later point in time with load_state().");
 static PyObject*
-Emulator_run_macro(PyObject* self, PyObject* arg)
+Emulator_save_state(m64py_Emulator* self, PyObject* py_filename)
 {
+    m64p_error result;
+    const char* filename;
+    if (!PyUnicode_CheckExact(py_filename))
+    {
+        PyErr_SetString(PyExc_TypeError, "save_state(): Expected a filename of type str");
+        return NULL;
+    }
+
+    filename = PyUnicode_AsUTF8(py_filename);
+    if (filename == NULL)
+        return NULL;
+
+    result = self->corelib.CoreDoCommand(M64CMD_STATE_SAVE, 1 /* savestates_type_m64p */, (void*)filename);
+    if (result != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to save state: Error code %d", result);
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(LOAD_STATE_DOC, "load_state(filename)\n--\n\n"
+"Loads a previously saved state.");
+static PyObject*
+Emulator_load_state(m64py_Emulator* self, PyObject* py_filename)
+{
+    m64p_error result;
+    const char* filename;
+    if (!PyUnicode_CheckExact(py_filename))
+    {
+        PyErr_SetString(PyExc_TypeError, "load_state(): Expected a filename of type str");
+        return NULL;
+    }
+
+    filename = PyUnicode_AsUTF8(py_filename);
+    if (filename == NULL)
+        return NULL;
+
+    result = self->corelib.CoreDoCommand(M64CMD_STATE_LOAD, 0, (void*)filename);
+    if (result != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to load state: Error code %d", result);
+        return NULL;
+    }
+
     Py_RETURN_NONE;
 }
 
@@ -379,7 +429,8 @@ static PyMethodDef Emulator_methods[] = {
     {"load_ssb64_rom",     (PyCFunction)Emulator_load_ssb64_rom,     METH_O,      LOAD_SSB64_ROM_DOC},
     {"execute",            (PyCFunction)Emulator_execute,            METH_NOARGS, EXECUTE_DOC},
     {"stop",               (PyCFunction)Emulator_stop,               METH_NOARGS, STOP_DOC},
-    {"run_macro",          (PyCFunction)Emulator_run_macro,          METH_O,      ""},
+    {"save_state",         (PyCFunction)Emulator_save_state,         METH_O,      SAVE_STATE_DOC},
+    {"load_state",         (PyCFunction)Emulator_load_state,         METH_O,      LOAD_STATE_DOC},
     {NULL}
 };
 
