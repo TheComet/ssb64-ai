@@ -60,12 +60,18 @@ catch_python_exception(void)
 
     if (exc_value)
     {
-        PyObject* exc_value_str = PyObject_Str(exc_value);
-        if (exc_value_str == NULL)
+        PyObject* exc_value_str;
+        const char* exc_value_char;
+        if ((exc_value_str = PyObject_Repr(exc_value)) == NULL)
             goto exc_value_failed;
-        fprintf(stderr, "%s: %s\n", Py_TYPE(exc_type)->tp_name, PyUnicode_AsUTF8(exc_value_str));
-        Py_DECREF(exc_value_str);
-    } exc_value_failed:
+        exc_value_char = PyUnicode_AsUTF8(exc_value_str);
+        if (exc_value_char == NULL)
+            goto utf8_failed;
+        fprintf(stderr, "%s\n", exc_value_char);
+
+        utf8_failed      : Py_DECREF(exc_value_str);
+        exc_value_failed : ;
+    }
 
     Py_XDECREF(exc_type);
     Py_XDECREF(exc_value);
@@ -150,9 +156,9 @@ vi_callback(m64py_Emulator* self)
     result = PyObject_CallObject(g_emu->vi_callback, NULL);
     if (result == NULL)
     {
-        /* We want to catch all exceptions except for keyboard interrupts */
-        if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt))
-            catch_python_exception();
+        /* We want to catch all exceptions except for keyboard interrupts *
+        if (!PyErr_ExceptionMatches(PyExc_KeyboardInterrupt))*/
+        catch_python_exception();
         g_emu->corelib.CoreDoCommand(M64CMD_STOP, 0, NULL);
     }
     else
@@ -165,11 +171,12 @@ vi_callback(m64py_Emulator* self)
 static void
 Emulator_dealloc(m64py_Emulator* self)
 {
+    Py_XDECREF(self->vi_callback);
     Py_XDECREF(self->log_message_callback);
     Py_XDECREF(self->frame_callback);
     Py_XDECREF(self->input_plugin);
     Py_XDECREF(self->video_plugin);
-    Py_XDECREF(self->video_plugin);
+    Py_XDECREF(self->audio_plugin);
     Py_XDECREF(self->rsp_plugin);
 
     if (self->corelib.handle)
@@ -241,7 +248,7 @@ try_load_corelib(m64py_Emulator* self, const char* config_path, const char* data
 static int
 try_load_default_plugins(m64py_Emulator* self)
 {
-    int success = 0;
+    int success = -1;
     PyObject *input_path, *video_path, *audio_path, *rsp_path;
     if ((input_path = m64py_prepend_module_path_to_filename("mupen64plus-input-sdl.so")) == NULL) goto input_path_failed;
     if ((video_path = m64py_prepend_module_path_to_filename("mupen64plus-video-glide64mk2.so")) == NULL) goto video_path_failed;
@@ -253,7 +260,7 @@ try_load_default_plugins(m64py_Emulator* self)
         try_loading_and_replacing_plugin(self, video_path, M64PLUGIN_GFX, &self->video_plugin) == 0 &&
         try_loading_and_replacing_plugin(self, audio_path, M64PLUGIN_AUDIO, &self->audio_plugin) == 0 &&
         try_loading_and_replacing_plugin(self, rsp_path, M64PLUGIN_RSP, &self->rsp_plugin) == 0
-    );
+    ) ? 0 : -1;
 
                         Py_DECREF(rsp_path);
     rsp_path_failed   : Py_DECREF(audio_path);
@@ -300,11 +307,11 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     g_emu->log_message_callback = (Py_INCREF(Py_None), Py_None);
     g_emu->vi_callback          = (Py_INCREF(Py_None), Py_None);
 
-    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) == -1)
+    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) != 0)
         goto init_failed;
 
     /* Try to load default plugins */
-    if (try_load_default_plugins(g_emu) == -1)
+    if (try_load_default_plugins(g_emu) != 0)
         goto init_failed;
 
     return (PyObject*)g_emu;
