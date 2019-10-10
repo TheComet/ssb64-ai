@@ -18,13 +18,14 @@ class Gym(object):
                 data_path=data_path)
         self.emu.log_message_callback = message_callback
         self.emu.frame_callback = self.frame_callback
-        #self.emu.rsp_plugin = "./mupen64plus-rsp-cxd4-sse2.so"
-        self.emu.rsp_plugin = "/usr/lib64/mupen64plus/mupen64plus-rsp-hle.so"
-        self.emu.input_plugin = "./mupen64plus-input-sdl.so"
-        self.emu.audio_plugin = "./mupen64plus-audio-sdl.so"
-        self.emu.video_plugin = "./mupen64plus-video-glide64mk2.so"
+
+        # Probably want to uncomment this for training
+        #self.emu.audio_plugin = None
+        #self.emu.video_plugin = None
+        #self.emu.speed_limiter = False
 
         self.game = self.emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
+        self.emu.load_state("data/savestates/pika-vs-pika_dreamland.m64savestate")
 
         self.fighters = tuple()
         self.stage = None
@@ -32,9 +33,15 @@ class Gym(object):
 
     def on_match_begin(self):
         # can access game settings and load the appropriate AI here?
-        self.fighters = (self.game.get_fighter(1), self.game.get_fighter(3))
+
+        # Traditionally, slots 2 and 4 are used on the n64 because this spawns
+        # both players on the side plats on Dreamland
+        self.fighters = (self.game.get_fighter(2), self.game.get_fighter(4))
         self.stage = self.game.get_stage()
-        self.fighters[0].controller.override = True
+
+        # Override controllers if you want to control the fighers from code
+        #self.fighters[0].controller.override = True
+        #self.fighters[1].controller.override = True
 
     def on_match_end(self):
         # load savestate for the next match? evaluate results?
@@ -44,8 +51,6 @@ class Gym(object):
         print("========================")
         print(f"Frame {frame} game state")
         print("========================")
-
-        self.fighters[0].controller.a = not self.fighters[0].controller.a
 
         # Print out fighter related state
         for n, fighter in enumerate(self.fighters):
