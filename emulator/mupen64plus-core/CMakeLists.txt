@@ -4,16 +4,23 @@ project ("mupen64plus-core"
     LANGUAGES C CXX  # ASM_NASM
     VERSION 2.0.0)
 
-enable_language(ASM_NASM)
+find_package (ZLIB REQUIRED)
+find_package (PNG REQUIRED)
+find_package (SDL2 REQUIRED)
+find_package (Freetype REQUIRED)
+if (M64P_OPENCV)
+    find_package (OpenCV COMPONENTS core REQUIRED)
+endif ()
 
-set (M64P_BITS "64" CACHE STRING "build 32-bit binaries on 64-bit machine")
+set (M64P_SHAREDDIR "" CACHE STRING "extra path to search for shared data files")
+option (M64P_32BIT "Force building 32-bit binaries on a 64-bit machine" OFF)
+option (M64P_PIC "Generate position independent code. NOTE: Is forced off when compiling for 32-bit" ON)
 option (M64P_LIRC "enable LIRC support" OFF)
 option (M64P_NO_ASM "build without assembly (no dynamic recompiler or MMX/SSE code)" OFF)
 option (M64P_USE_GLES "build against GLESv2 instead of OpenGL" OFF)
 option (M64P_VC "build against Broadcom Videocore GLESv2" OFF)
 option (M64P_NEON "(ARM only) build for hard floating point environments" OFF)
 option (M64P_VFP_HARD "(ARM only) full hardware floating point ABI" OFF)
-set (M64P_SHAREDDIR "" CACHE STRING "extra path to search for shared data files")
 option (M64P_OSD "Enable/disable build of OpenGL On-screen display" OFF)
 option (M64P_NEW_DYNAREC "Replace dynamic recompiler with Ari64's experimental dynarec" OFF)
 option (M64P_OPENCV "Enable OpenCV support" OFF)
@@ -27,41 +34,74 @@ option (M64P_DBG_TIMING "print timing data" OFF)
 option (M64P_DBG_PROFILE "dump profiling data for r4300 dynarec to data file" OFF)
 option (M64P_AI "Enable AI modifications from the SSB64-AI project" ON)
 
+cmake_host_system_information (RESULT HOST_64BIT QUERY IS_64BIT)
 test_big_endian (M64P_BIG_ENDIAN)
-
-find_package (ZLIB REQUIRED)
-find_package (PNG REQUIRED)
-find_package (SDL2 REQUIRED)
-find_package (Freetype REQUIRED)
-if (M64P_OPENCV)
-    find_package (OpenCV COMPONENTS core REQUIRED)
-endif ()
 
 # TODO
 if (M64P_VC OR M64P_USE_GLES OR M64P_NEW_DYNAREC)
     message (FATAL_ERROR "Not implemented in build system yet")
 endif ()
 
-set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden)
+# Platform settings
+if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
+    if (MSVC)
+        set (ASM_DIALECT ASM_MASM)
+    elseif (MINGW)
+        set (ASM_DIALECT ASM_NASM)
+    else ()
+        message (FATAL_ERROR "Unsupported compiler")
+    endif ()
+elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Darwin")
+    set (ASM_DIALECT ASM_NASM)
+elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
+    set (ASM_DIALECT ASM_NASM)
+elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Android")
+    set (ASM_DIALECT ASM_NASM)
+elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "FreeBSD")
+    set (ASM_DIALECT ASM_NASM)
+else ()
+    message (FATAL_ERROR "Unsupported host system")
+endif ()
+
+enable_language(${ASM_DIALECT})
+
+set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden -flto)
 set (GNU_CXXFLAGS -fvisibility-inlines-hidden)
 set (GNU_ASFLAGS)
 set (GNU_LDFLAGS)
 
+# tweak flags for 32-bit build on 64-bit system
+if (HOST_64BIT)
+    if (M64P_32BIT)
+        list (APPEND GNU_CFLAGS -m32)
+        list (APPEND GNU_LDFLAGS -Wl,-m,elf_i386)
+    endif ()
+endif ()
+if (M64P_PROFILE)
+    list (APPEND GNU_CFLAGS -pg -g)
+endif ()
+if (M64P_DEBUGGER)
+    list (APPEND GNU_LDFLAGS -lopcodes -lbfd)
+endif ()
+if (NOT HOST_64BIT OR M64P_32BIT)
+    set (M64P_PIC OFF)
+endif ()
+
 # Determine arch of dynamic recompiler
 if (NOT M64P_NO_ASM)
-    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-        set (DYNAREC "x86_64")
+    if (HOST_64BIT)
+        set (DYNAREC_ARCH "x86_64")
         list (APPEND GNU_LDFLAGS -Wl,-version-script,${CMAKE_CURRENT_LIST_DIR}/src/api/api_export.ver)
     else ()
-        set (DYNAREC "x86")
+        set (DYNAREC_ARCH "x86")
     endif ()
 endif ()
 set (DYNAREC_SOURCES
     "src/device/r4300/recomp.c"
-    "src/device/r4300/${DYNAREC}/assemble.c"
-    "src/device/r4300/${DYNAREC}/dynarec.c"
-    "src/device/r4300/${DYNAREC}/regcache.c"
-    "src/device/r4300/${DYNAREC}/dyna_start.asm")
+    "src/device/r4300/${DYNAREC_ARCH}/assemble.c"
+    "src/device/r4300/${DYNAREC_ARCH}/dynarec.c"
+    "src/device/r4300/${DYNAREC_ARCH}/regcache.c"
+    "src/device/r4300/${DYNAREC_ARCH}/dyna_start.asm")
 
 # minizip lib
 add_library (minizip STATIC
@@ -172,23 +212,11 @@ add_library (mupen64plus-core SHARED
     $<$<BOOL:${M64P_DBG_COUNT}>:src/device/r4300/instr_counters.c>
     $<$<BOOL:${M64P_DBG_PROFILE}>:src/main/profile.c>)
 
-# tweak flags for 32-bit build on 64-bit system
-if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-    if (M64P_BITS EQUAL "32")
-        list (APPEND GNU_LDFLAGS -m32 -Wl,-m,elf_i386)
-    endif ()
-endif ()
-if (M64P_PROFILE)
-    list (APPEND GNU_CFLAGS -pg -g)
-endif ()
-if (M64P_DEBUGGER)
-    list (APPEND GNU_LDFLAGS -lopcodes -lbfd)
-endif ()
-
 set_property (TARGET mupen64plus-core PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories (mupen64plus-core
     PRIVATE $<$<COMPILE_LANGUAGE:C>:${CMAKE_CURRENT_LIST_DIR}/src>
-    PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>)
+    PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>
+    PRIVATE $<$<COMPILE_LANGUAGE:ASM_MASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>)
 target_compile_options (mupen64plus-core
     PRIVATE $<$<C_COMPILER_ID:GNU>:$<$<COMPILE_LANGUAGE:C>:${GNU_CFLAGS}>>
     PRIVATE $<$<C_COMPILER_ID:GNU>:$<$<COMPILE_LANGUAGE:CXX>:${GNU_CXXFLAGS}>>
@@ -215,7 +243,6 @@ set_target_properties (mupen64plus-core PROPERTIES
     VERSION ${PROJECT_VERSION}
     OUTPUT_NAME mupen64plus
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
-    #LINKER_LANGUAGE NASM)
 target_link_libraries (mupen64plus-core
     PRIVATE
         minizip
@@ -226,4 +253,5 @@ target_link_libraries (mupen64plus-core
         ${SDL2_LIBRARIES}
         ZLIB::ZLIB
         $<$<BOOL:${M64P_OPENCV}>:${OpenCV_LIBRARIES}>
-        $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>)
+        $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>
+        $<$<BOOL:${M64P_DBG_TIMING}>:rt>)
