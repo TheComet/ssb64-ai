@@ -17,7 +17,7 @@ class Gym(object):
                 config_path=data_path,
                 data_path=data_path)
         self.emu.log_message_callback = message_callback
-        self.emu.frame_callback = self.frame_callback
+        self.emu.vi_callback = self.vi_callback
 
         # Probably want to uncomment this for training
         #self.emu.audio_plugin = None
@@ -30,6 +30,7 @@ class Gym(object):
         self.fighters = tuple()
         self.stage = None
         self.old_match_in_progress = False
+        self.frame = 0
 
     def on_match_begin(self):
         # can access game settings and load the appropriate AI here?
@@ -47,9 +48,9 @@ class Gym(object):
         # load savestate for the next match? evaluate results?
         pass
 
-    def on_next_frame(self, frame):
+    def on_next_frame(self):
         print("========================")
-        print(f"Frame {frame} game state")
+        print(f"Frame {self.frame} game state")
         print("========================")
 
         # Print out fighter related state
@@ -73,7 +74,7 @@ class Gym(object):
         # Print out stage related state
         print(f"whispy : {self.stage.whispy}")
 
-    def frame_callback(self, frame):
+    def vi_callback(self):
         match_in_progress = self.game.is_match_in_progress
 
         if match_in_progress and not self.old_match_in_progress:
@@ -83,7 +84,9 @@ class Gym(object):
             self.old_match_in_progress = False
             self.on_match_end()
         if match_in_progress:
-            self.on_next_frame(frame)
+            self.on_next_frame()
+
+        self.frame += 1
 
     def run(self):
         self.emu.execute()
