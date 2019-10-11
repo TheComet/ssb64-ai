@@ -298,7 +298,7 @@ static unsigned int vi_clock_from_system_type(int system_type)
     {
     default:
         DebugMessage(M64MSG_WARNING, "Invalid system_type %d. Assuming NTSC", system_type);
-        /* fallback */
+        /* fallthrough */
     case SYSTEM_NTSC: return 48681812;
     case SYSTEM_PAL:  return 49656530;
     case SYSTEM_MPAL: return 48628316;

@@ -55,7 +55,7 @@ elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Darwin")
     set (ASM_DIALECT ASM_NASM)
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
     set (ASM_DIALECT ASM_NASM)
-    
+
     # m64p debugger uses dis-asm.h and a few other tools
     if (M64P_DEBUGGER)
         find_path (DISASM_INCLUDE_DIR dis-asm.h)
@@ -222,6 +222,7 @@ add_library (mupen64plus-core SHARED
 
 set_property (TARGET mupen64plus-core PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories (mupen64plus-core
+    PRIVATE $<$<COMPILE_LANGUAGE:C>:${SDL2_INCLUDE_DIRS}>
     PRIVATE $<$<COMPILE_LANGUAGE:C>:${CMAKE_CURRENT_LIST_DIR}/src>
     PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>
     PRIVATE $<$<COMPILE_LANGUAGE:ASM_MASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>)

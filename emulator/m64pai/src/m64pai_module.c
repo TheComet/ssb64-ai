@@ -43,7 +43,6 @@ m64pai_prepend_module_path_to_filename(const char* filename)
 
     module_file = PyModule_GetFilenameObject(m);  /* new ref */
     JMP_IF_NULL(module_file, "Failed to get filename object from module");
-    printf("Path to module: %s\n", PyUnicode_AsUTF8(module_file));
 
     ospath = PyImport_ImportModule("os.path");  /* new ref */
     JMP_IF_NULL(ospath, "Failed to get filename object from module");

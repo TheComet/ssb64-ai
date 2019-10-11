@@ -1,3 +1,4 @@
+#include "m64pai_module.h"
 #include "m64pai_type_Plugin_CuckedInputPlugin.h"
 #include "m64pai_type_Emulator.h"
 #include "m64p_common.h"
@@ -41,14 +42,11 @@ CuckedInputPlugin_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     PyObject* py_cucked_args;
     m64pai_CuckedInputPlugin* self;
 
-    static const char* cucked_path = "./mupen64plus-input-ai-cuck.so";
-
     if (!PyArg_ParseTupleAndKeywords(args, kwds, "siO&", kwds_names, &actual_path_to_plugin, &plugin_type, long2handle_converter, &corelib_handle))
         return NULL;
 
     /* We need to modify path_to_plugin to load the cucked plugin instead */
-    py_cucked_path = PyUnicode_FromString(cucked_path);
-    if (py_cucked_path == NULL)
+    if ((py_cucked_path = m64pai_prepend_module_path_to_filename("mupen64plus-input-ai-cuck.so")) == NULL)
         return NULL;
     py_cucked_args = PyTuple_New(3);
     if (py_cucked_args == NULL)
@@ -81,7 +79,7 @@ CuckedInputPlugin_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 #define REQUIRE_FUNC(name) \
         if ((self->name = osal_dynlib_getproc(self->super.handle, #name)) == NULL) \
         { \
-            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from plugin \"%s\"", #name, cucked_path); \
+            PyErr_Format(PyExc_RuntimeError, "Failed to load function \"%s\" from plugin \"%s\"", #name, PyUnicode_AsUTF8(py_cucked_path)); \
             goto get_cucked_proc_failed; \
         }
 

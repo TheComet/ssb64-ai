@@ -34,7 +34,7 @@ set (M64PAI_TYPES
     SectorZ
     YoshisIsland)
 
-set (EXAMPLE_SCRIPTS 
+set (EXAMPLE_SCRIPTS
     run_game.py)
 
 string (REGEX REPLACE ";?([A-Za-z0-9]+)" "    X(\\1) \\\\\n" M64PAI_TYPES_X_MACROS "${M64PAI_TYPES}")
@@ -101,9 +101,12 @@ add_dependencies (m64pai m64pai-share-dir)
 foreach (SCRIPT ${EXAMPLE_SCRIPTS})
     add_custom_command (
         OUTPUT ${CMAKE_BINARY_DIR}/${SCRIPT}
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different "python/${SCRIPT}" ${CMAKE_BINARY_DIR}/${SCRIPT}
+        DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/python/${SCRIPT}
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/python/${SCRIPT} ${CMAKE_BINARY_DIR}/${SCRIPT}
         COMMENT "Copying example script ${SCRIPT} to ${CMAKE_BINARY_DIR}"
         VERBATIM)
+    add_custom_target (m64pai-script-${SCRIPT} ALL
+        DEPENDS ${CMAKE_BINARY_DIR}/${SCRIPT})
 endforeach ()
 
 if (WIN32)

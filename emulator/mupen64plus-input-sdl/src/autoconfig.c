@@ -184,8 +184,8 @@ static int auto_compare_name(const char *joySDLName, char *line)
         }
         if (strcasestr(joySDLName, Word) == NULL)
             joyFound = 0;
-		else
-			joyFoundScore += 4;
+        else
+            joyFoundScore += 4;
     }
 
     if (joyFound)
@@ -274,7 +274,7 @@ int auto_set_defaults(int iDeviceIdx, const char *joySDLName)
             if (eParseState == E_PARAM_READ)
                 eParseState = E_NAME_SEARCH;
 
-            /* we need to look through the device name word by word to see if it matches the joySDLName that we're looking for */ 
+            /* we need to look through the device name word by word to see if it matches the joySDLName that we're looking for */
             pchCurLine[strlen(pchCurLine)-1] = 0;
             joyFound = auto_compare_name(joySDLName, StripSpace(pchCurLine + 1));
             /* if we found the right joystick, then open up the core config section to store parameters and set the 'device' param */

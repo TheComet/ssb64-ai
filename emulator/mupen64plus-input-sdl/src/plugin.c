@@ -956,7 +956,7 @@ EXPORT void CALL InitiateControllers(CONTROL_INFO ControlInfo)
 *******************************************************************/
 EXPORT void CALL ReadController(int Control, unsigned char *Command)
 {
-#ifdef _DEBUG
+#ifdef DEBUG
     if (Command != NULL)
         DebugMessage(M64MSG_INFO, "Raw Read (cont=%d):  %02X %02X %02X %02X %02X %02X", Control,
                      Command[0], Command[1], Command[2], Command[3], Command[4], Command[5]);

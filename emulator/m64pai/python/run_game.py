@@ -10,7 +10,7 @@ class Gym(object):
             if level < 3:
                 print(f"{level}: {msg}")
 
-        data_path = join(getcwd(), "data")
+        data_path = join(getcwd(), "m64pai/share/m64pai/data")
 
         self.emu = m64pai.Emulator(
                 config_path=data_path,
@@ -24,7 +24,7 @@ class Gym(object):
         #self.emu.speed_limiter = False
 
         self.game = self.emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
-        self.emu.load_state("data/savestates/pika-vs-pika_dreamland.m64savestate")
+        self.emu.load_state(join(data_path, "savestates/pika-vs-pika_dreamland.m64savestate"))
 
         self.fighters = tuple()
         self.stage = None

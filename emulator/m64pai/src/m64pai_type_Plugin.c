@@ -38,7 +38,7 @@ Plugin_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     /* Try to open shared library */
     if (osal_dynlib_open(&self->handle, path_to_plugin) != M64ERR_SUCCESS)
     {
-        PyErr_Format(PyExc_RuntimeError, "Failed to open shared library \"%s\"", path_to_plugin);
+        PyErr_Format(PyExc_RuntimeError, "Failed to open shared library \"%s\": %s", path_to_plugin, osal_dynlib_last_error());
         goto fail;
     }
 
