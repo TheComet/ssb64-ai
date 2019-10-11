@@ -1,0 +1,9 @@
+/* NOTE: This file was auto-generated, edits will be lost! */
+
+#ifndef M64PAI_TYPES_LIST_H
+#deifne M64PAI_TYPES_LIST_H
+
+#define M64PAI_TYPES_LIST \
+${M64PAI_TYPES_X_MACROS}
+
+#endif /* M64PAI_TYPES_LIST_H */

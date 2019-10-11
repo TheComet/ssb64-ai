@@ -4,14 +4,6 @@ project ("mupen64plus-core"
     LANGUAGES C CXX  # ASM_NASM
     VERSION 2.0.0)
 
-find_package (ZLIB REQUIRED)
-find_package (PNG REQUIRED)
-find_package (SDL2 REQUIRED)
-find_package (Freetype REQUIRED)
-if (M64P_OPENCV)
-    find_package (OpenCV COMPONENTS core REQUIRED)
-endif ()
-
 set (M64P_SHAREDDIR "" CACHE STRING "extra path to search for shared data files")
 option (M64P_32BIT "Force building 32-bit binaries on a 64-bit machine" OFF)
 option (M64P_PIC "Generate position independent code. NOTE: Is forced off when compiling for 32-bit" ON)
@@ -34,8 +26,16 @@ option (M64P_DBG_TIMING "print timing data" OFF)
 option (M64P_DBG_PROFILE "dump profiling data for r4300 dynarec to data file" OFF)
 option (M64P_AI "Enable AI modifications from the SSB64-AI project" ON)
 
-cmake_host_system_information (RESULT HOST_64BIT QUERY IS_64BIT)
+cmake_host_system_information (RESULT HOST_IS_64BIT QUERY IS_64BIT)
 test_big_endian (M64P_BIG_ENDIAN)
+
+find_package (ZLIB REQUIRED)
+find_package (PNG REQUIRED)
+find_package (SDL2 REQUIRED)
+find_package (Freetype REQUIRED)
+if (M64P_OPENCV)
+    find_package (OpenCV COMPONENTS core REQUIRED)
+endif ()
 
 # TODO
 if (M64P_VC OR M64P_USE_GLES OR M64P_NEW_DYNAREC)
@@ -55,6 +55,14 @@ elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Darwin")
     set (ASM_DIALECT ASM_NASM)
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
     set (ASM_DIALECT ASM_NASM)
+    
+    # m64p debugger uses dis-asm.h and a few other tools
+    if (M64P_DEBUGGER)
+        find_path (DISASM_INCLUDE_DIR dis-asm.h)
+        if (NOT DISASM_INCLUDE_DIR)
+            message (FATAL_ERROR "Please install the development package of binutils (on Ubuntu that's binutils-dev)")
+        endif ()
+    endif ()
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Android")
     set (ASM_DIALECT ASM_NASM)
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "FreeBSD")
@@ -71,7 +79,7 @@ set (GNU_ASFLAGS)
 set (GNU_LDFLAGS)
 
 # tweak flags for 32-bit build on 64-bit system
-if (HOST_64BIT)
+if (HOST_IS_64BIT)
     if (M64P_32BIT)
         list (APPEND GNU_CFLAGS -m32)
         list (APPEND GNU_LDFLAGS -Wl,-m,elf_i386)
@@ -83,13 +91,13 @@ endif ()
 if (M64P_DEBUGGER)
     list (APPEND GNU_LDFLAGS -lopcodes -lbfd)
 endif ()
-if (NOT HOST_64BIT OR M64P_32BIT)
+if (NOT HOST_IS_64BIT OR M64P_32BIT)
     set (M64P_PIC OFF)
 endif ()
 
 # Determine arch of dynamic recompiler
 if (NOT M64P_NO_ASM)
-    if (HOST_64BIT)
+    if (HOST_IS_64BIT)
         set (DYNAREC_ARCH "x86_64")
         list (APPEND GNU_LDFLAGS -Wl,-version-script,${CMAKE_CURRENT_LIST_DIR}/src/api/api_export.ver)
     else ()
@@ -242,7 +250,7 @@ target_compile_definitions (mupen64plus-core
 set_target_properties (mupen64plus-core PROPERTIES
     VERSION ${PROJECT_VERSION}
     OUTPUT_NAME mupen64plus
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/m64pai")
 target_link_libraries (mupen64plus-core
     PRIVATE
         minizip
@@ -255,3 +263,7 @@ target_link_libraries (mupen64plus-core
         $<$<BOOL:${M64P_OPENCV}>:${OpenCV_LIBRARIES}>
         $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>
         $<$<BOOL:${M64P_DBG_TIMING}>:rt>)
+
+add_library(mupen64plus-core-api INTERFACE IMPORTED GLOBAL)
+set_target_properties(mupen64plus-core-api PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/api")

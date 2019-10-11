@@ -20,3 +20,5 @@ set_target_properties (mupen64plus-input-ai-cuck PROPERTIES
     PREFIX ""
     OUTPUT_NAME mupen64plus-input-ai-cuck
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
+target_link_libraries (mupen64plus-input-ai-cuck
+    PUBLIC mupen64plus-core-api)

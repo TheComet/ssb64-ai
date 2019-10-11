@@ -11,7 +11,9 @@ endif ()
 ###############################################################################
 
 add_subdirectory ("mupen64plus-core")
-set (MUPEN64PLUS_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/mupen64plus-core/src/api")
+add_subdirectory ("mupen64plus-input-ai-cuck")
+add_subdirectory ("mupen64plus-video-glide64mk2")
+add_subdirectory ("m64pai")
 
 function (build_mupen_component NAME)
     set (ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
@@ -28,7 +30,7 @@ function (build_mupen_component NAME)
 
     if (UNIX)
         set (OUTPUT_LIB_FILE "${ROOT_DIR}/projects/unix/${LIBNAME}")
-        set (FINAL_LIB_FILE ${CMAKE_BINARY_DIR}/${LIBNAME})
+        set (FINAL_LIB_FILE ${CMAKE_BINARY_DIR}/m64pai/${LIBNAME})
         add_custom_command (OUTPUT ${FINAL_LIB_FILE}
             COMMAND make ARGS all -j DEBUGGER=1 DBG=1
             COMMAND ${CMAKE_COMMAND} -E copy_if_different ${OUTPUT_LIB_FILE} ${FINAL_LIB_FILE}
@@ -47,7 +49,7 @@ set (MUPEN_COMPONENTS
     #mupen64plus-ai
     mupen64plus-audio-sdl
     mupen64plus-input-sdl
-    mupen64plus-rsp-cxd4
+    #mupen64plus-rsp-cxd4
     #mupen64plus-video-glide64
     mupen64plus-video-glide64mk2
     #mupen64plus-video-rice
@@ -58,53 +60,3 @@ foreach (COMPONENT ${MUPEN_COMPONENTS})
     build_mupen_component (${COMPONENT})
 endforeach ()
 
-add_subdirectory ("mupen64plus-input-ai-cuck")
-
-###############################################################################
-# Python bindings
-###############################################################################
-
-add_library (m64py SHARED
-    "m64py/src/m64py_module.c"
-    "m64py/src/m64py_ssb64_memory.c"
-    "m64py/src/m64py_type_Controller.c"
-    "m64py/src/m64py_type_Emulator.c"
-    "m64py/src/m64py_type_Fighter.c"
-    "m64py/src/m64py_type_Fighter_Pikachu.c"
-    "m64py/src/m64py_type_Fighter_Mario.c"
-    "m64py/src/m64py_type_Fighter_Luigi.c"
-    "m64py/src/m64py_type_Fighter_Fox.c"
-    "m64py/src/m64py_type_Fighter_DonkeyKong.c"
-    "m64py/src/m64py_type_Fighter_Samus.c"
-    "m64py/src/m64py_type_Fighter_Link.c"
-    "m64py/src/m64py_type_Fighter_Yoshi.c"
-    "m64py/src/m64py_type_Fighter_CaptainFalcon.c"
-    "m64py/src/m64py_type_Fighter_Kirby.c"
-    "m64py/src/m64py_type_Fighter_Jigglypuff.c"
-    "m64py/src/m64py_type_Fighter_Ness.c"
-    "m64py/src/m64py_type_Plugin.c"
-    "m64py/src/m64py_type_Plugin_CuckedInputPlugin.c"
-    "m64py/src/m64py_type_SSB64.c"
-    "m64py/src/m64py_type_Stage.c"
-    "m64py/src/m64py_type_Stage_DreamLand.c"
-    "m64py/src/m64py_type_Stage_PeachsCastle.c"
-    "m64py/src/m64py_type_Stage_SectorZ.c"
-    "m64py/src/m64py_type_Stage_KongoJungle.c"
-    "m64py/src/m64py_type_Stage_PlanetZebes.c"
-    "m64py/src/m64py_type_Stage_HyruleCastle.c"
-    "m64py/src/m64py_type_Stage_YoshisIsland.c"
-    "m64py/src/m64py_type_Stage_SaffronCity.c"
-    "m64py/src/m64py_type_Stage_MushroomKingdom.c"
-    $<$<PLATFORM_ID:Linux>:m64py/src/osal_dynamiclib_unix.c>
-    $<$<PLATFORM_ID:Windows>:m64py/src/osal_dynamiclib_win32.c>)
-target_include_directories (m64py
-    PRIVATE
-        "m64py/include"
-        ${MUPEN64PLUS_CORE_INCLUDE_DIR})
-add_dependencies (m64py ${MUPEN_COMPONENTS})
-set_target_properties (m64py PROPERTIES
-    PREFIX ""
-    DBG_POSTFIX ""
-    OUTPUT_NAME "m64py")
-find_package (Python COMPONENTS Development REQUIRED)
-target_link_libraries (m64py PRIVATE Python::Python)
