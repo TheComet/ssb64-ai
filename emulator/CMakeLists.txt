@@ -6,6 +6,14 @@ if (NOT DEFINED CMAKE_BUILD_TYPE)
     set (CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
 endif ()
 
+include (GNUInstallDirs)
+
+set (M64PAI_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX}/m64pai)
+set (M64PAI_INSTALL_LIBDIR ${M64PAI_INSTALL_PREFIX}/lib)
+set (M64PAI_INSTALL_BINDIR ${M64PAI_INSTALL_PREFIX}/bin)
+set (M64PAI_INSTALL_INCLUDEDIR ${M64PAI_INSTALL_PREFIX}/include)
+set (M64PAI_INSTALL_SHAREDIR ${M64PAI_INSTALL_PREFIX}/share/m64pai)
+
 ###############################################################################
 # Build all mupen libs
 ###############################################################################
@@ -14,6 +22,12 @@ add_subdirectory ("mupen64plus-core")
 add_subdirectory ("mupen64plus-input-ai-cuck")
 add_subdirectory ("mupen64plus-video-glide64mk2")
 add_subdirectory ("m64pai")
+
+install (
+    EXPORT m64paiTargets
+    FILE m64pai.cmake
+    NAMESPACE m64pai::
+    DESTINATION ${M64PAI_INSTALL_SHAREDIR})
 
 function (build_mupen_component NAME)
     set (ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/${NAME}")
@@ -59,4 +73,3 @@ foreach (COMPONENT ${MUPEN_COMPONENTS})
     message (STATUS ${COMPONENT})
     build_mupen_component (${COMPONENT})
 endforeach ()
-

@@ -5,37 +5,40 @@ project ("m64pai"
 find_package (Python COMPONENTS Development REQUIRED)
 
 set (M64PAI_TYPES
-    ControllerType
-    EmulatorType
-    FighterType
-    CaptainFalconType
-    DonkeyKongType
-    FoxType
-    JigglypuffType
-    KirbyType
-    LinkType
-    LuigiType
-    MarioType
-    NessType
-    PikachuType
-    SamusType
-    YoshiType
-    PluginType
-    CuckedInputPluginType
-    SSB64Type
-    StageType
-    DreamLandType
-    HyruleCastleType
-    KongoJungleType
-    MushroomKingdomType
-    PeachsCastleType
-    PlanetZebesType
-    SaffronCityType
-    SectorZType
-    YoshisIslandType)
+    Controller
+    Emulator
+    Fighter
+    CaptainFalcon
+    DonkeyKong
+    Fox
+    Jigglypuff
+    Kirby
+    Link
+    Luigi
+    Mario
+    Ness
+    Pikachu
+    Samus
+    Yoshi
+    Plugin
+    CuckedInputPlugin
+    SSB64
+    Stage
+    DreamLand
+    HyruleCastle
+    KongoJungle
+    MushroomKingdom
+    PeachsCastle
+    PlanetZebes
+    SaffronCity
+    SectorZ
+    YoshisIsland)
+
+set (EXAMPLE_SCRIPTS 
+    run_game.py)
 
 string (REGEX REPLACE ";?([A-Za-z0-9]+)" "    X(\\1) \\\\\n" M64PAI_TYPES_X_MACROS "${M64PAI_TYPES}")
-string (REGEX REPLACE ";?([A-Za-z0-9]+)Type" "from .m64pai import \\1\n" M64PAI_TYPES_PYTHON_INIT "${M64PAI_TYPES}")
+string (REGEX REPLACE ";?([A-Za-z0-9]+)" "from .m64pai import \\1\n" M64PAI_TYPES_PYTHON_INIT "${M64PAI_TYPES}")
 configure_file ("templates/m64pai_types_list.h.in" "m64pai_types_list.h")
 configure_file ("templates/__init__.py.in" "${CMAKE_BINARY_DIR}/m64pai/__init__.py")
 
@@ -85,3 +88,40 @@ set_target_properties (m64pai PROPERTIES
 target_link_libraries (m64pai
     PRIVATE mupen64plus-core-api
     PRIVATE Python::Python)
+
+add_custom_command (
+    OUTPUT ${CMAKE_BINARY_DIR}/m64pai/share/m64pai/data
+    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/m64pai/share/m64pai
+    COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/data ${CMAKE_BINARY_DIR}/m64pai/share/m64pai/data
+    COMMENT "Creating data symlink in build tree"
+    VERBATIM)
+add_custom_target (m64pai-share-dir DEPENDS ${CMAKE_BINARY_DIR}/m64pai/share/m64pai/data)
+add_dependencies (m64pai m64pai-share-dir)
+
+foreach (SCRIPT ${EXAMPLE_SCRIPTS})
+    add_custom_command (
+        OUTPUT ${CMAKE_BINARY_DIR}/${SCRIPT}
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "python/${SCRIPT}" ${CMAKE_BINARY_DIR}/${SCRIPT}
+        COMMENT "Copying example script ${SCRIPT} to ${CMAKE_BINARY_DIR}"
+        VERBATIM)
+endforeach ()
+
+if (WIN32)
+    install (
+        TARGETS m64pai
+        EXPORT m64paiTargets
+        RUNTIME DESTINATION ${M64PAI_INSTALL_PREFIX})
+else ()
+    install (
+        TARGETS m64pai
+        EXPORT m64paiTargets
+        LIBRARY DESTINATION ${M64PAI_INSTALL_PREFIX})
+endif ()
+
+install (
+    FILES ${CMAKE_BINARY_DIR}/m64pai/__init__.py
+    DESTINATION ${M64PAI_INSTALL_PREFIX})
+
+install (
+    DIRECTORY "data"
+    DESTINATION ${M64PAI_INSTALL_SHAREDIR})

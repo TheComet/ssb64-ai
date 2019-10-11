@@ -267,3 +267,21 @@ target_link_libraries (mupen64plus-core
 add_library(mupen64plus-core-api INTERFACE IMPORTED GLOBAL)
 set_target_properties(mupen64plus-core-api PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/api")
+
+if (WIN32)
+    install (
+        TARGETS mupen64plus-core
+        EXPORT m64paiTargets
+        RUNTIME DESTINATION ${M64PAI_INSTALL_PREFIX}
+        LIBRARY DESTINATION ${M64PAI_INSTALL_LIBDIR})
+else ()
+    install (
+        TARGETS mupen64plus-core
+        EXPORT m64paiTargets
+        LIBRARY DESTINATION ${M64PAI_INSTALL_PREFIX})
+endif ()
+
+install (
+    DIRECTORY "src/api/"
+    DESTINATION ${M64PAI_INSTALL_INCLUDEDIR}
+    FILES_MATCHING PATTERN "*.h")

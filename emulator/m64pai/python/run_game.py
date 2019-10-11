@@ -13,7 +13,6 @@ class Gym(object):
         data_path = join(getcwd(), "data")
 
         self.emu = m64pai.Emulator(
-                corelib_path="./libmupen64plus.so", 
                 config_path=data_path,
                 data_path=data_path)
         self.emu.log_message_callback = message_callback

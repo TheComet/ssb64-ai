@@ -22,3 +22,15 @@ set_target_properties (mupen64plus-input-ai-cuck PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 target_link_libraries (mupen64plus-input-ai-cuck
     PUBLIC mupen64plus-core-api)
+
+if (WIN32)
+    install (
+        TARGETS mupen64plus-input-ai-cuck
+        EXPORT m64paiTargets
+        RUNTIME DESTINATION ${M64PAI_INSTALL_PREFIX})
+else ()
+    install (
+        TARGETS mupen64plus-input-ai-cuck
+        EXPORT m64paiTargets
+        LIBRARY DESTINATION ${M64PAI_INSTALL_PREFIX})
+endif ()

@@ -1,3 +1,4 @@
+#include "m64pai_types_list.h"
 #include "m64pai_module.h"
 #include "m64pai_type_Controller.h"
 #include "m64pai_type_Emulator.h"
@@ -42,6 +43,7 @@ m64pai_prepend_module_path_to_filename(const char* filename)
 
     module_file = PyModule_GetFilenameObject(m);  /* new ref */
     JMP_IF_NULL(module_file, "Failed to get filename object from module");
+    printf("Path to module: %s\n", PyUnicode_AsUTF8(module_file));
 
     ospath = PyImport_ImportModule("os.path");  /* new ref */
     JMP_IF_NULL(ospath, "Failed to get filename object from module");
@@ -74,34 +76,11 @@ module_free(void* m)
 static int
 init_builtin_types(void)
 {
-    if (m64pai_ControllerType_init() != 0)        return -1;
-    if (m64pai_EmulatorType_init() != 0)          return -1;
-    if (m64pai_FighterType_init() != 0)           return -1;
-    if (m64pai_CaptainFalconType_init() != 0)     return -1;
-    if (m64pai_DonkeyKongType_init() != 0)        return -1;
-    if (m64pai_FoxType_init() != 0)               return -1;
-    if (m64pai_JigglypuffType_init() != 0)        return -1;
-    if (m64pai_KirbyType_init() != 0)             return -1;
-    if (m64pai_LinkType_init() != 0)              return -1;
-    if (m64pai_LuigiType_init() != 0)             return -1;
-    if (m64pai_MarioType_init() != 0)             return -1;
-    if (m64pai_NessType_init() != 0)              return -1;
-    if (m64pai_PikachuType_init() != 0)           return -1;
-    if (m64pai_SamusType_init() != 0)             return -1;
-    if (m64pai_YoshiType_init() != 0)             return -1;
-    if (m64pai_PluginType_init() != 0)            return -1;
-    if (m64pai_CuckedInputPluginType_init() != 0) return -1;
-    if (m64pai_SSB64Type_init() != 0)             return -1;
-    if (m64pai_StageType_init() != 0)             return -1;
-    if (m64pai_DreamLandType_init() != 0)         return -1;
-    if (m64pai_HyruleCastleType_init() != 0)      return -1;
-    if (m64pai_KongoJungleType_init() != 0)       return -1;
-    if (m64pai_MushroomKingdomType_init() != 0)   return -1;
-    if (m64pai_PeachsCastleType_init() != 0)      return -1;
-    if (m64pai_PlanetZebesType_init() != 0)       return -1;
-    if (m64pai_SaffronCityType_init() != 0)       return -1;
-    if (m64pai_SectorZType_init() != 0)           return -1;
-    if (m64pai_YoshisIslandType_init() != 0)      return -1;
+#define X(type) \
+    if (m64pai_##type##Type_init() != 0) \
+        return -1;
+    M64PAI_TYPES_LIST
+#undef X
     return 0;
 }
 
@@ -109,48 +88,30 @@ init_builtin_types(void)
 static int
 add_builtin_types_to_module(PyObject* m)
 {
-    Py_INCREF(&m64pai_ControllerType);        if (PyModule_AddObject(m, "Controller",        (PyObject*)&m64pai_ControllerType) != 0)        return -1;
-    Py_INCREF(&m64pai_EmulatorType);          if (PyModule_AddObject(m, "Emulator",          (PyObject*)&m64pai_EmulatorType) != 0)          return -1;
-    Py_INCREF(&m64pai_FighterType);           if (PyModule_AddObject(m, "Fighter",           (PyObject*)&m64pai_FighterType) != 0)           return -1;
-    Py_INCREF(&m64pai_CaptainFalconType);     if (PyModule_AddObject(m, "CaptainFalcon",     (PyObject*)&m64pai_CaptainFalconType) != 0)     return -1;
-    Py_INCREF(&m64pai_DonkeyKongType);        if (PyModule_AddObject(m, "DonkeyKong",        (PyObject*)&m64pai_DonkeyKongType) != 0)        return -1;
-    Py_INCREF(&m64pai_FoxType);               if (PyModule_AddObject(m, "Fox",               (PyObject*)&m64pai_FoxType) != 0)               return -1;
-    Py_INCREF(&m64pai_JigglypuffType);        if (PyModule_AddObject(m, "Jigglypuff",        (PyObject*)&m64pai_JigglypuffType) != 0)        return -1;
-    Py_INCREF(&m64pai_KirbyType);             if (PyModule_AddObject(m, "Kirby",             (PyObject*)&m64pai_KirbyType) != 0)             return -1;
-    Py_INCREF(&m64pai_LinkType);              if (PyModule_AddObject(m, "Link",              (PyObject*)&m64pai_LinkType) != 0)              return -1;
-    Py_INCREF(&m64pai_LuigiType);             if (PyModule_AddObject(m, "Luigi",             (PyObject*)&m64pai_LuigiType) != 0)             return -1;
-    Py_INCREF(&m64pai_MarioType);             if (PyModule_AddObject(m, "Mario",             (PyObject*)&m64pai_MarioType) != 0)             return -1;
-    Py_INCREF(&m64pai_NessType);              if (PyModule_AddObject(m, "Ness",              (PyObject*)&m64pai_NessType) != 0)              return -1;
-    Py_INCREF(&m64pai_PikachuType);           if (PyModule_AddObject(m, "Pikachu",           (PyObject*)&m64pai_PikachuType) != 0)           return -1;
-    Py_INCREF(&m64pai_SamusType);             if (PyModule_AddObject(m, "Samus",             (PyObject*)&m64pai_SamusType) != 0)             return -1;
-    Py_INCREF(&m64pai_YoshiType);             if (PyModule_AddObject(m, "Yoshi",             (PyObject*)&m64pai_YoshiType) != 0)             return -1;
-    Py_INCREF(&m64pai_PluginType);            if (PyModule_AddObject(m, "Plugin",            (PyObject*)&m64pai_PluginType) != 0)            return -1;
-    Py_INCREF(&m64pai_CuckedInputPluginType); if (PyModule_AddObject(m, "CuckedInputPlugin", (PyObject*)&m64pai_CuckedInputPluginType) != 0) return -1;
-    Py_INCREF(&m64pai_SSB64Type);             if (PyModule_AddObject(m, "SSB64",             (PyObject*)&m64pai_SSB64Type) != 0)             return -1;
-    Py_INCREF(&m64pai_StageType);             if (PyModule_AddObject(m, "Stage",             (PyObject*)&m64pai_StageType) != 0)             return -1;
-    Py_INCREF(&m64pai_DreamLandType);         if (PyModule_AddObject(m, "DreamLand",         (PyObject*)&m64pai_DreamLandType) != 0)         return -1;
-    Py_INCREF(&m64pai_HyruleCastleType);      if (PyModule_AddObject(m, "HyruleCastle",      (PyObject*)&m64pai_HyruleCastleType) != 0)      return -1;
-    Py_INCREF(&m64pai_KongoJungleType);       if (PyModule_AddObject(m, "KongoJungle",       (PyObject*)&m64pai_KongoJungleType) != 0)       return -1;
-    Py_INCREF(&m64pai_MushroomKingdomType);   if (PyModule_AddObject(m, "MushroomKingdom",   (PyObject*)&m64pai_MushroomKingdomType) != 0)   return -1;
-    Py_INCREF(&m64pai_PeachsCastleType);      if (PyModule_AddObject(m, "PeachsCastle",      (PyObject*)&m64pai_PeachsCastleType) != 0)      return -1;
-    Py_INCREF(&m64pai_PlanetZebesType);       if (PyModule_AddObject(m, "PlanetZebes",       (PyObject*)&m64pai_PlanetZebesType) != 0)       return -1;
-    Py_INCREF(&m64pai_SaffronCityType);       if (PyModule_AddObject(m, "SaffronCity",       (PyObject*)&m64pai_SaffronCityType) != 0)       return -1;
-    Py_INCREF(&m64pai_SectorZType);           if (PyModule_AddObject(m, "SectorZ",           (PyObject*)&m64pai_SectorZType) != 0)           return -1;
-    Py_INCREF(&m64pai_YoshisIslandType);      if (PyModule_AddObject(m, "YoshisIsland",      (PyObject*)&m64pai_YoshisIslandType) != 0)      return -1;
+#define X(type) \
+    Py_INCREF(&m64pai_##type##Type); \
+    if (PyModule_AddObject(m, #type, (PyObject*)&m64pai_##type##Type) != 0) \
+        return -1;
+    M64PAI_TYPES_LIST
+#undef X
+
     return 0;
 }
 
 /* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(M64PAI_MODULE_DOC,
+"Provides an API for communicating with N64 games, specifically for AI training\n"
+"purposes.");
 PyModuleDef m64pai_module = {
     PyModuleDef_HEAD_INIT,
-    "m64pai",        /* module name */
-    NULL,           /* Docstring, may be NULL */
-    -1,             /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables */
-    NULL,           /* module methods */
-    NULL,           /* m_reload */
-    NULL,           /* m_traverse */
-    NULL,           /* m_clear */
-    module_free     /* m_free */
+    .m_name = "m64pai",
+    .m_doc = M64PAI_MODULE_DOC,
+    .m_size = -1,  /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables */
+    .m_methods = NULL,
+    .m_slots = NULL,
+    .m_traverse = NULL,
+    .m_clear = NULL,
+    .m_free = module_free
 };
 
 /* ------------------------------------------------------------------------- */
