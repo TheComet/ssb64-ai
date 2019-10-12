@@ -2,3 +2,4 @@
 *.kdev4
 mupen64plus-ui-console
 *_obj*
+*.swp

@@ -4,27 +4,23 @@ from os import getcwd
 from os.path import join
 
 
-class Gym(object):
-    def __init__(self):
+class Gym(m64pai.Emulator):
+    def __init__(self, config_path, data_path):
+        super(Gym, self).__init__(config_path, data_path)
+
+        # Probably want to uncomment this for training (and comment the above)
+        #super(Gym, self).__init__(config_path, data_path, audio_plugin=None, video_plugin=None)
+        #self.emu.speed_limiter = False
+
         def message_callback(level, msg):
             if level < 3:
                 print(f"{level}: {msg}")
 
-        data_path = join(getcwd(), "m64pai/share/m64pai/data")
+        self.log_message_callback = message_callback
+        self.vi_callback = self.vi_callback
 
-        self.emu = m64pai.Emulator(
-                config_path=data_path,
-                data_path=data_path)
-        self.emu.log_message_callback = message_callback
-        self.emu.vi_callback = self.vi_callback
-
-        # Probably want to uncomment this for training
-        #self.emu.audio_plugin = None
-        #self.emu.video_plugin = None
-        #self.emu.speed_limiter = False
-
-        self.game = self.emu.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
-        self.emu.load_state(join(data_path, "savestates/pika-vs-pika_dreamland.m64savestate"))
+        self.game = self.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
+        self.load_state(join(data_path, "savestates/pika-vs-pika_dreamland.m64savestate"))
 
         self.fighters = tuple()
         self.stage = None
@@ -87,10 +83,8 @@ class Gym(object):
 
         self.frame += 1
 
-    def run(self):
-        self.emu.execute()
 
-
-gym = Gym()
-gym.run()
+share_path = join(getcwd(), "m64pai/share/m64pai/data")
+gym = Gym(share_path, share_path)
+gym.execute()
 

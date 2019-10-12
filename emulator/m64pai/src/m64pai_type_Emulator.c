@@ -197,6 +197,13 @@ try_load_corelib(m64pai_Emulator* self, const char* config_path, const char* dat
     m64p_error result;
     PyObject* py_corelib_file = NULL;
 
+    /* corelib may already be loaded? */
+    if (self->corelib.handle)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "Core library is already loaded, why are you calling __init__() twice?");
+        return -1;
+    }
+
     /* If corelib path wasn't provided, load default */
     if (corelib_file == NULL)
     {
@@ -246,41 +253,74 @@ try_load_corelib(m64pai_Emulator* self, const char* config_path, const char* dat
 
 /* ------------------------------------------------------------------------- */
 static int
-try_load_default_plugins(m64pai_Emulator* self)
+try_load_default_plugins(m64pai_Emulator* self,
+                         PyObject* input_plugin,
+                         PyObject* audio_plugin,
+                         PyObject* video_plugin,
+                         PyObject* rsp_plugin)
 {
     int success = -1;
-    PyObject *input_path, *video_path, *audio_path, *rsp_path;
-    if ((input_path = m64pai_prepend_module_path_to_filename("mupen64plus-input-sdl.so")) == NULL) goto input_path_failed;
-    if ((video_path = m64pai_prepend_module_path_to_filename("mupen64plus-video-glide64mk2.so")) == NULL) goto video_path_failed;
-    if ((audio_path = m64pai_prepend_module_path_to_filename("mupen64plus-audio-sdl.so")) == NULL) goto audio_path_failed;
-    if ((rsp_path   = m64pai_prepend_module_path_to_filename("mupen64plus-rsp-hle.so")) == NULL) goto rsp_path_failed;
+    PyObject *default_input_plugin, *default_video_plugin, *default_audio_plugin, *default_rsp_plugin;
 
-    success = (
-        try_loading_and_replacing_plugin(self, input_path, M64PLUGIN_INPUT, &self->input_plugin) == 0 &&
-        try_loading_and_replacing_plugin(self, video_path, M64PLUGIN_GFX, &self->video_plugin) == 0 &&
-        try_loading_and_replacing_plugin(self, audio_path, M64PLUGIN_AUDIO, &self->audio_plugin) == 0 &&
-        try_loading_and_replacing_plugin(self, rsp_path, M64PLUGIN_RSP, &self->rsp_plugin) == 0
-    ) ? 0 : -1;
+    if ((default_input_plugin = m64pai_prepend_module_path_to_filename("mupen64plus-input-sdl.so")) == NULL) goto input_path_failed;
+    if ((default_audio_plugin = m64pai_prepend_module_path_to_filename("mupen64plus-audio-sdl.so")) == NULL) goto audio_path_failed;
+    if ((default_video_plugin = m64pai_prepend_module_path_to_filename("mupen64plus-video-glide64mk2.so")) == NULL) goto video_path_failed;
+    if ((default_rsp_plugin   = m64pai_prepend_module_path_to_filename("mupen64plus-rsp-hle.so")) == NULL) goto rsp_path_failed;
 
-                        Py_DECREF(rsp_path);
-    rsp_path_failed   : Py_DECREF(audio_path);
-    audio_path_failed : Py_DECREF(video_path);
-    video_path_failed : Py_DECREF(input_path);
+    success = 0;
+
+#define MAYBE_OVERRIDE_PATH(plugin) \
+    if (plugin && PyUnicode_CheckExact(plugin)) \
+    { \
+        Py_DECREF(default_##plugin); \
+        default_##plugin = plugin; \
+        Py_INCREF(default_##plugin); \
+    } \
+    else if (plugin != NULL && plugin != Py_None) \
+    { \
+        PyErr_SetString(PyExc_TypeError, #plugin " should either be None or a path to a mupen64plus compatible plugin."); \
+        success = -1; goto fail; \
+    }
+
+    MAYBE_OVERRIDE_PATH(input_plugin)
+    MAYBE_OVERRIDE_PATH(audio_plugin)
+    MAYBE_OVERRIDE_PATH(video_plugin)
+    MAYBE_OVERRIDE_PATH(rsp_plugin)
+
+    if (input_plugin == NULL)
+        if (try_loading_and_replacing_plugin(self, default_input_plugin, M64PLUGIN_INPUT, &self->input_plugin) != 0)
+            { success = -1; goto fail; }
+    if (audio_plugin == NULL)
+        if (try_loading_and_replacing_plugin(self, default_audio_plugin, M64PLUGIN_AUDIO, &self->audio_plugin) != 0)
+            { success = -1; goto fail; }
+    if (video_plugin == NULL)
+        if (try_loading_and_replacing_plugin(self, default_video_plugin, M64PLUGIN_GFX, &self->video_plugin) != 0)
+            { success = -1; goto fail; }
+    if (rsp_plugin == NULL)
+        if (try_loading_and_replacing_plugin(self, default_rsp_plugin, M64PLUGIN_RSP, &self->rsp_plugin) != 0)
+            { success = -1; goto fail; }
+
+    fail              : Py_DECREF(default_rsp_plugin);
+    rsp_path_failed   : Py_DECREF(default_video_plugin);
+    video_path_failed : Py_DECREF(default_audio_plugin);
+    audio_path_failed : Py_DECREF(default_input_plugin);
     input_path_failed : return success;
 }
 
 /* ------------------------------------------------------------------------- */
+static char* kwds_str[] = {
+    "config_path",
+    "data_path",
+    "corelib_path",
+    "input_plugin",
+    "audio_plugin",
+    "video_plugin",
+    "rsp_plugin",
+    NULL
+};
 static PyObject*
 Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 {
-    const char *corelib_path, *config_path, *data_path;
-    static char* kwds_str[] = {
-        "config_path",
-        "data_path",
-        "corelib_path",
-        NULL
-    };
-
     /* mupen64plus has global state so enforce only one instance of the Emulator
      * object */
     if (g_emu)
@@ -288,10 +328,6 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         PyErr_SetString(PyExc_RuntimeError, "There can only be one instance of m64pai.Emulator (libmupen64plus has static state)");
         return NULL;
     }
-
-    corelib_path = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss|s", kwds_str, &config_path, &data_path, &corelib_path))
-        return NULL;
 
     g_emu = (m64pai_Emulator*)type->tp_alloc(type, 0);
     if (g_emu == NULL)
@@ -307,17 +343,33 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     g_emu->log_message_callback = (Py_INCREF(Py_None), Py_None);
     g_emu->vi_callback          = (Py_INCREF(Py_None), Py_None);
 
-    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) != 0)
-        goto init_failed;
-
-    /* Try to load default plugins */
-    if (try_load_default_plugins(g_emu) != 0)
-        goto init_failed;
-
     return (PyObject*)g_emu;
 
-    init_failed       : Py_DECREF(g_emu); g_emu = NULL;
     alloc_self_failed : return NULL;
+}
+
+/* ------------------------------------------------------------------------- */
+static int
+Emulator_init(m64pai_Emulator* self, PyObject* args, PyObject* kwds)
+{
+    const char *corelib_path, *config_path, *data_path;
+    PyObject *input_plugin=NULL, *audio_plugin=NULL, *video_plugin=NULL, *rsp_plugin=NULL;
+
+    corelib_path = NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss|sOOOO", kwds_str,
+            &config_path, &data_path, &corelib_path,
+            &input_plugin, &audio_plugin,
+            &video_plugin, &rsp_plugin))
+        return -1;
+
+    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) != 0)
+        return -1;
+
+    /* Try to load default plugins */
+    if (try_load_default_plugins(g_emu, input_plugin, audio_plugin, video_plugin, rsp_plugin) != 0)
+        return -1;
+
+    return 0;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -818,6 +870,7 @@ PyTypeObject m64pai_EmulatorType = {
     .tp_doc = EMULATOR_DOC,
     .tp_methods = Emulator_methods,
     .tp_getset = Emulator_getsetters,
+    .tp_init = (initproc)Emulator_init,
     .tp_new = Emulator_new
 };
 
