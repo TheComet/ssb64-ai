@@ -17,7 +17,7 @@ class Gym(m64pai.Emulator):
                 print(f"{level}: {msg}")
 
         self.log_message_callback = message_callback
-        self.vi_callback = self.vi_callback
+        self.vi_callback = self.update
 
         self.game = self.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
         self.load_state(join(data_path, "savestates/pika-vs-pika_dreamland.m64savestate"))
@@ -69,7 +69,7 @@ class Gym(m64pai.Emulator):
         # Print out stage related state
         print(f"whispy : {self.stage.whispy}")
 
-    def vi_callback(self):
+    def update(self):
         match_in_progress = self.game.is_match_in_progress
 
         if match_in_progress and not self.old_match_in_progress:
