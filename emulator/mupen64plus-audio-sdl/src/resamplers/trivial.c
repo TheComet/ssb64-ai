@@ -42,11 +42,11 @@ static size_t trivial_resample(void* resampler,
     enum { BYTES_PER_SAMPLE = 4 };
     size_t i, j;
 
+    j = 0;
     if (dst_freq >= src_freq) {
         const int dpos = 2*src_freq;
         const int dneg = dpos - 2*dst_freq;
 
-        j = 0;
         int criteria = dpos - dst_freq;
 
         for (i = 0; i < dst_size/BYTES_PER_SAMPLE; ++i) {
