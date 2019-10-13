@@ -75,8 +75,6 @@ enable_language(${ASM_DIALECT})
 
 set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden -flto)
 set (GNU_CXXFLAGS -fvisibility-inlines-hidden)
-set (GNU_ASFLAGS)
-set (GNU_LDFLAGS)
 
 # tweak flags for 32-bit build on 64-bit system
 if (HOST_IS_64BIT)
@@ -253,17 +251,18 @@ set_target_properties (mupen64plus-core PROPERTIES
     OUTPUT_NAME mupen64plus
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/m64pai")
 target_link_libraries (mupen64plus-core
-    PRIVATE
-        minizip
-        md5lib
-        oglft
-        xxhash
-        PNG::PNG
-        ${SDL2_LIBRARIES}
-        ZLIB::ZLIB
-        $<$<BOOL:${M64P_OPENCV}>:${OpenCV_LIBRARIES}>
-        $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>
-        $<$<BOOL:${M64P_DBG_TIMING}>:rt>)
+    PRIVATE minizip
+    PRIVATE md5lib
+    PRIVATE oglft
+    PRIVATE xxhash
+    PRIVATE $<$<C_COMPILER_ID:GNU>:opcodes>
+    PRIVATE $<$<C_COMPILER_ID:GNU>:bfd>
+    PRIVATE PNG::PNG
+    PRIVATE ${SDL2_LIBRARIES}
+    PRIVATE ZLIB::ZLIB
+    PRIVATE $<$<BOOL:${M64P_OPENCV}>:${OpenCV_LIBRARIES}>
+    PRIVATE $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>
+    PRIVATE $<$<BOOL:${M64P_DBG_TIMING}>:rt>)
 
 add_library(mupen64plus-core-api INTERFACE IMPORTED GLOBAL)
 set_target_properties(mupen64plus-core-api PROPERTIES

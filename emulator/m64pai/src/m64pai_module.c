@@ -31,38 +31,75 @@
 
 /* ------------------------------------------------------------------------- */
 PyObject*
-m64pai_prepend_module_path_to_filename(const char* filename)
+m64pai_get_path_to_module(void)
 {
-    PyObject *m, *module_file, *ospath, *split_tuple, *path_to_module, *py_filename, *result = NULL;
+    PyObject *m, *mfile, *ospathmod, *split_result;
+    PyObject* result = NULL;
 
-#define JMP_IF_NULL(o, msg) \
-    if (o == NULL) goto o##_failed
+#define FAIL_IF_NULL(o, msg) \
+    if (o == NULL) { \
+        PyErr_SetString(PyExc_RuntimeError, msg); \
+        goto o##_failed; \
+    }
 
     m = PyState_FindModule(&m64pai_module);  /* borrowed ref */
-    JMP_IF_NULL(m, "Failed to get m64pai module");
+    FAIL_IF_NULL(m, "Failed to get m64pai module");
 
-    module_file = PyModule_GetFilenameObject(m);  /* new ref */
-    JMP_IF_NULL(module_file, "Failed to get filename object from module");
+    mfile = PyModule_GetFilenameObject(m);  /* new ref */
+    FAIL_IF_NULL(mfile, "Failed to get filename object from module");
 
-    ospath = PyImport_ImportModule("os.path");  /* new ref */
-    JMP_IF_NULL(ospath, "Failed to get filename object from module");
+    ospathmod = PyImport_ImportModule("os.path"); /* new ref */
+    if (ospathmod == NULL) goto ospathmod_failed;
 
-    split_tuple = PyObject_CallMethod(ospath, "split", "(O)", module_file); /* new ref */
-    JMP_IF_NULL(split_tuple, "Failed to get filename object from module");
+    split_result = PyObject_CallMethod(ospathmod, "split", "(O)", mfile); /* new ref */
+    if (split_result == NULL) goto split_failed;
 
-    path_to_module = PyTuple_GET_ITEM(split_tuple, 0); /* borrowed ref */
+    result = PyTuple_GET_ITEM(split_result, 0);
+    Py_INCREF(result);
+
+                       Py_DECREF(split_result);
+    split_failed     : Py_DECREF(ospathmod);
+    ospathmod_failed : Py_DECREF(mfile);
+    mfile_failed     :
+    m_failed         : return result;
+#undef FAIL_IF_NULL
+}
+
+/* ------------------------------------------------------------------------- */
+PyObject*
+m64pai_prepend_module_path_to_filename(const char* filename)
+{
+    PyObject *ospathmod, *mpath, *py_filename;
+    PyObject* result = NULL;
+
+    ospathmod = PyImport_ImportModule("os.path");  /* new ref */
+    if (ospathmod == NULL) goto ospathmod_failed;
+
+    mpath = m64pai_get_path_to_module(); /* new ref */
+    if (mpath == NULL) goto mpath_failed;
 
     py_filename = PyUnicode_FromString(filename); /* new ref */
-    JMP_IF_NULL(py_filename, "Failed to get filename object from module");
+    if (py_filename == NULL) goto py_filename_failed;
 
-    result = PyObject_CallMethod(ospath, "join", "(OO)", path_to_module, py_filename);
+    result = PyObject_CallMethod(ospathmod, "join", "(OO)", mpath, py_filename);
 
-    result_failed         : Py_DECREF(py_filename);
-    py_filename_failed    : Py_DECREF(split_tuple);
-    split_tuple_failed    : Py_DECREF(ospath);
-    ospath_failed         : Py_DECREF(module_file);
-    module_file_failed    :
-    m_failed              : return result;
+                         Py_DECREF(py_filename);
+    py_filename_failed : Py_DECREF(mpath);
+    mpath_failed       : Py_DECREF(ospathmod);
+    ospathmod_failed   : return result;
+}
+
+/* ------------------------------------------------------------------------- */
+PyDoc_STRVAR(GET_DATA_PATH_DOC, "get_data_path()\n--\n\n"
+"Returns an absolute path to the 'data' folder of the m64pai module. This\n"
+"folder contains config files and savestates, among other things.\n"
+"\n"
+"The Emulator's default config_path and data_path are initialized to\n"
+"  os.path.join(m64pai.get_data_path(), 'config')\n");
+static PyObject*
+m64pai_get_data_path(PyObject* m, PyObject* args)
+{
+    return m64pai_prepend_module_path_to_filename("share/m64pai/data");
 }
 
 /* ------------------------------------------------------------------------- */
@@ -98,6 +135,12 @@ add_builtin_types_to_module(PyObject* m)
 }
 
 /* ------------------------------------------------------------------------- */
+static PyMethodDef m64pai_methods[] = {
+    {"get_data_path", m64pai_get_data_path, METH_NOARGS, GET_DATA_PATH_DOC},
+    {NULL}
+};
+
+/* ------------------------------------------------------------------------- */
 PyDoc_STRVAR(M64PAI_MODULE_DOC,
 "Provides an API for communicating with N64 games, specifically for AI training\n"
 "purposes.");
@@ -106,10 +149,7 @@ PyModuleDef m64pai_module = {
     .m_name = "m64pai",
     .m_doc = M64PAI_MODULE_DOC,
     .m_size = -1,  /* size of per-interpreter state of the module, or -1 if the module keeps state in global variables */
-    .m_methods = NULL,
-    .m_slots = NULL,
-    .m_traverse = NULL,
-    .m_clear = NULL,
+    .m_methods = m64pai_methods,
     .m_free = module_free
 };
 

@@ -18,6 +18,7 @@
     X(CoreDoCommand) \
     X(CoreAddCheat) \
     X(CoreCheatEnabled) \
+    X(CoreGetRomSettings) \
     X(AISetVICallback) \
     X(DebugMemRead32) \
     X(DebugMemRead16) \

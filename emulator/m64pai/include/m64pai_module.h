@@ -6,6 +6,12 @@
 extern PyModuleDef m64pai_module;
 
 /*!
+ * @brief Returns the absolute path to this module.
+ */
+PyObject*
+m64pai_get_path_to_module(void);
+
+/*!
  * @brief Prepends the path to the m64pai module with the specified filename.
  */
 PyObject*

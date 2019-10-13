@@ -195,7 +195,6 @@ static int
 try_load_corelib(m64pai_Emulator* self, const char* config_path, const char* data_path, const char* corelib_file)
 {
     m64p_error result;
-    PyObject* py_corelib_file = NULL;
 
     /* corelib may already be loaded? */
     if (self->corelib.handle)
@@ -204,18 +203,8 @@ try_load_corelib(m64pai_Emulator* self, const char* config_path, const char* dat
         return -1;
     }
 
-    /* If corelib path wasn't provided, load default */
-    if (corelib_file == NULL)
-    {
-        py_corelib_file = m64pai_prepend_module_path_to_filename("libmupen64plus.so");
-        if (py_corelib_file == NULL)
-            return -1;
-        corelib_file = PyUnicode_AsUTF8(py_corelib_file);
-    }
-
     /* Try to load mupen64plus corelib */
     result = osal_dynlib_open(&self->corelib.handle, corelib_file);
-    Py_XDECREF(py_corelib_file);
     if (result != M64ERR_SUCCESS)
     {
         PyErr_Format(PyExc_RuntimeError, "Could not open shared library \"%s\": %s", corelib_file, osal_dynlib_last_error());
@@ -352,24 +341,56 @@ Emulator_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
 static int
 Emulator_init(m64pai_Emulator* self, PyObject* args, PyObject* kwds)
 {
-    const char *corelib_path, *config_path, *data_path;
+    int result = 0;
+    PyObject *corelib_path=NULL, *config_path=NULL, *data_path=NULL;
     PyObject *input_plugin=NULL, *audio_plugin=NULL, *video_plugin=NULL, *rsp_plugin=NULL;
+    const char *config_path_utf8, *data_path_utf8, *corelib_path_utf8;
 
-    corelib_path = NULL;
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "ss|sOOOO", kwds_str,
-            &config_path, &data_path, &corelib_path,
+#define FAIL(label) { result = -1; goto label; }
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|O!O!O!OOOO", kwds_str,
+            &PyUnicode_Type, &config_path,
+            &PyUnicode_Type, &data_path,
+            &PyUnicode_Type, &corelib_path,
             &input_plugin, &audio_plugin,
             &video_plugin, &rsp_plugin))
-        return -1;
+        goto parse_args_failed;
+    Py_XINCREF(config_path);
+    Py_XINCREF(data_path);
+    Py_XINCREF(corelib_path);
 
-    if (try_load_corelib(g_emu, config_path, data_path, corelib_path) != 0)
-        return -1;
+    /* If config path was not provided, set default */
+    if (config_path == NULL)
+        if ((config_path = m64pai_prepend_module_path_to_filename("share/m64pai/data/config")) == NULL)
+            FAIL(fail);
+    if (data_path == NULL)
+        if ((data_path = m64pai_prepend_module_path_to_filename("share/m64pai/data/config")) == NULL)
+            FAIL(fail);
+    if (corelib_path == NULL)
+        if ((corelib_path = m64pai_prepend_module_path_to_filename("libmupen64plus.so")) == NULL)
+            FAIL(fail);
+
+    if ((config_path_utf8 = PyUnicode_AsUTF8(config_path)) == NULL)
+        FAIL(fail);
+    if ((data_path_utf8 = PyUnicode_AsUTF8(data_path)) == NULL)
+        FAIL(fail);
+    if ((corelib_path_utf8 = PyUnicode_AsUTF8(corelib_path)) == NULL)
+        FAIL(fail);
+
+    if (try_load_corelib(g_emu, config_path_utf8, data_path_utf8, corelib_path_utf8) != 0)
+        FAIL(fail);
 
     /* Try to load default plugins */
     if (try_load_default_plugins(g_emu, input_plugin, audio_plugin, video_plugin, rsp_plugin) != 0)
-        return -1;
+        FAIL(fail);
 
-    return 0;
+    fail :
+        Py_XDECREF(config_path);
+        Py_XDECREF(data_path);
+        Py_XDECREF(corelib_path);
+    parse_args_failed :
+        return result;
+#undef FAIL
 }
 
 /* ------------------------------------------------------------------------- */

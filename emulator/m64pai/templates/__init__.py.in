@@ -1,1 +1,2 @@
 ${M64PAI_TYPES_PYTHON_INIT}
+from .m64pai import get_data_path

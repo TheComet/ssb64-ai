@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.12)
+cmake_minimum_required (VERSION 3.13)
 
 project ("Super Smash Bros. AI")
 
@@ -21,10 +21,6 @@ set (M64PAI_BINARY_LIBDIR ${M64PAI_BINARY_PREFIX}/lib)
 set (M64PAI_BINARY_BINDIR ${M64PAI_BINARY_PREFIX}/bin)
 set (M64PAI_BINARY_INCLUDEDIR ${M64PAI_BINARY_PREFIX}/include)
 set (M64PAI_BINARY_SHAREDIR ${M64PAI_BINARY_PREFIX}/share/m64pai)
-
-###############################################################################
-# Build all mupen libs
-###############################################################################
 
 add_subdirectory ("mupen64plus-core")
 add_subdirectory ("mupen64plus-audio-sdl")

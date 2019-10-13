@@ -63,6 +63,7 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
     long rom_size;
     void* rom_buffer;
     m64p_error result;
+    m64p_rom_settings rom_settings;
     struct cheat_t* cheat;
 
     self = (m64pai_SSB64*)type->tp_alloc(type, 0);
@@ -107,7 +108,22 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         goto read_rom_failed;
     }
 
-    /* TODO: Figure out region from loaded ROM. For now just assume USA */
+    /* Make sure ROM is a SSB64 (U) and allocate the memory interace for this region */
+    if ((result = self->emu->corelib.CoreDoCommand(M64CMD_ROM_GET_SETTINGS, sizeof(rom_settings), &rom_settings)) != M64ERR_SUCCESS)
+    {
+        PyErr_Format(PyExc_RuntimeError, "Failed to get rom settings. Error code %d", result);
+        goto alloc_memory_interface_failed;
+    }
+    if (strcmp(rom_settings.goodname, "Super Smash Bros. (U) [!]") != 0)
+    {
+        PyErr_Format(PyExc_RuntimeError, "ROM goodname \"%s\" does not match expected \"Super Smash Bros. (U) [!]\"", rom_settings.goodname);
+        goto alloc_memory_interface_failed;
+    }
+    if (strcmp(rom_settings.MD5, "F7C52568A31AADF26E14DC2B6416B2ED") != 0)
+    {
+        PyErr_Format(PyExc_RuntimeError, "ROM MD5 \"%s\" does not match expected \"F7C52568A31AADF26E14DC2B6416B2ED\". Only Super Smash Bros. (U) [!] is currently supported.", rom_settings.MD5);
+        goto alloc_memory_interface_failed;
+    }
     self->memory_interface = m64pai_memory_interface_create(&self->emu->corelib, REGION_USA);
     if (self->memory_interface == NULL)
         goto alloc_memory_interface_failed;

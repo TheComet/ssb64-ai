@@ -5,8 +5,8 @@ from os.path import join
 
 
 class Gym(m64pai.Emulator):
-    def __init__(self, config_path, data_path):
-        super(Gym, self).__init__(config_path, data_path)
+    def __init__(self):
+        super(Gym, self).__init__()
 
         # Probably want to uncomment this for training (and comment the above)
         #super(Gym, self).__init__(config_path, data_path, audio_plugin=None, video_plugin=None)
@@ -20,7 +20,7 @@ class Gym(m64pai.Emulator):
         self.vi_callback = self.update
 
         self.game = self.load_ssb64_rom("./Super Smash Bros. (U) [!].z64")
-        self.load_state(join(data_path, "savestates/pika-vs-pika_dreamland.m64savestate"))
+        self.load_state(join(m64pai.get_data_path(), "savestates/pika-vs-pika_dreamland.m64savestate"))
 
         self.fighters = tuple()
         self.stage = None
@@ -84,7 +84,6 @@ class Gym(m64pai.Emulator):
         self.frame += 1
 
 
-share_path = join(getcwd(), "m64pai/share/m64pai/data")
-gym = Gym(share_path, share_path)
+gym = Gym()
 gym.execute()
 
