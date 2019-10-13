@@ -72,6 +72,11 @@ else ()
 endif ()
 
 enable_language(${ASM_DIALECT})
+if (${ASM_DIALECT} MATCHES ASM_NASM)
+    if (${CMAKE_ASM_NASM_COMPILER_VERION} VERSION_LESS "2.14")
+        message (FATAL_ERROR "nasm < 2.14 has a bug where include paths are ignored. Please install the latest version of nasm")
+    endif ()
+endif ()
 
 set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden -flto)
 set (GNU_CXXFLAGS -fvisibility-inlines-hidden)
