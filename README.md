@@ -8,6 +8,7 @@ sudo apt install nasm zlib1g-dev libpng-dev libsdl2-dev libpython3-dev libfreety
 It is recommended to install the following optional dependencies as well:
 ```sh
 sudo apt install libresample1-dev libspeexdsp-dev libboost-filesystem-dev
+```
 
 ```sh
 git clone git://github.com/thecomet/ssb64-ai
