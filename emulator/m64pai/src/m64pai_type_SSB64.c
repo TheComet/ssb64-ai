@@ -114,11 +114,6 @@ SSB64_new(PyTypeObject* type, PyObject* args, PyObject* kwds)
         PyErr_Format(PyExc_RuntimeError, "Failed to get rom settings. Error code %d", result);
         goto alloc_memory_interface_failed;
     }
-    if (strcmp(rom_settings.goodname, "Super Smash Bros. (U) [!]") != 0)
-    {
-        PyErr_Format(PyExc_RuntimeError, "ROM goodname \"%s\" does not match expected \"Super Smash Bros. (U) [!]\"", rom_settings.goodname);
-        goto alloc_memory_interface_failed;
-    }
     if (strcmp(rom_settings.MD5, "F7C52568A31AADF26E14DC2B6416B2ED") != 0)
     {
         PyErr_Format(PyExc_RuntimeError, "ROM MD5 \"%s\" does not match expected \"F7C52568A31AADF26E14DC2B6416B2ED\". Only Super Smash Bros. (U) [!] is currently supported.", rom_settings.MD5);
