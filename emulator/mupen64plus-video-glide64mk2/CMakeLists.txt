@@ -13,10 +13,10 @@ cmake_host_system_information (RESULT HOST_HAS_MMX QUERY HAS_MMX)
 cmake_host_system_information (RESULT HOST_HAS_SSE QUERY HAS_SSE)
 test_big_endian (M64P_BIG_ENDIAN)
 
-find_package (ZLIB REQUIRED)
+require_zlib()
 find_package (PNG REQUIRED)
 find_package (OpenGL COMPONENTS OpenGL REQUIRED)
-find_package (SDL2 REQUIRED)
+require_sdl2()
 if (M64P_HIRES)
     find_package (Boost COMPONENTS system filesystem)
     if (NOT Boost_FOUND)
@@ -85,8 +85,7 @@ set_property (
     PROPERTY POSITION_INDEPENDENT_CODE ${IS_HOST_64BIT})
 target_include_directories (mupen64plus-video-glide64mk2
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src
-    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/Glitch64/inc
-    PRIVATE ${SDL2_INCLUDE_DIRS})
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src/Glitch64/inc)
 target_compile_definitions (mupen64plus-video-glide64mk2
     PRIVATE $<$<BOOL:${M64P_BIG_ENDIAN}>:M64P_BIG_ENDIAN>
     PRIVATE $<$<BOOL:${M64P_HIRES}>:DUMP_CACHE>
@@ -104,11 +103,11 @@ set_target_properties (mupen64plus-video-glide64mk2 PROPERTIES
     OUTPUT_NAME mupen64plus-video-glide64mk2
     LIBRARY_OUTPUT_DIRECTORY ${M64PAI_BINARY_PREFIX})
 target_link_libraries (mupen64plus-video-glide64mk2
-    PUBLIC mupen64plus-core-api
+    PRIVATE mupen64plus-core-api
     PRIVATE ZLIB::ZLIB
     PRIVATE PNG::PNG
     PRIVATE OpenGL::GL
-    PRIVATE ${SDL2_LIBRARIES}
+    PRIVATE SDL2::SDL2
     PRIVATE $<$<BOOL:${M64P_HIRES}>:Boost::system>
     PRIVATE $<$<BOOL:${M64P_HIRES}>:Boost::filesystem>)
 

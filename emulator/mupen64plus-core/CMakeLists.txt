@@ -29,9 +29,9 @@ option (M64P_AI "Enable AI modifications from the SSB64-AI project" ON)
 cmake_host_system_information (RESULT HOST_IS_64BIT QUERY IS_64BIT)
 test_big_endian (M64P_BIG_ENDIAN)
 
-find_package (ZLIB REQUIRED)
+require_zlib()
 find_package (PNG REQUIRED)
-find_package (SDL2 REQUIRED)
+require_sdl2()
 find_package (Freetype REQUIRED)
 if (M64P_OPENCV)
     find_package (OpenCV COMPONENTS core REQUIRED)
@@ -74,7 +74,7 @@ endif ()
 enable_language(${ASSEMBLER_DIALECT})
 if (${ASSEMBLER_DIALECT} MATCHES "ASM_NASM")
     execute_process (COMMAND ${CMAKE_ASM_NASM_COMPILER} --version OUTPUT_VARIABLE NASM_VERSION_OUTPUT)
-    string (REGEX MATCH "[0-9]+.[0-9]+.[0-9]+" NASM_VERSION ${NASM_VERSION_OUTPUT})
+    string (REGEX MATCH "[0-9]+\\.?[0-9]+\\.?[0-9]+" NASM_VERSION ${NASM_VERSION_OUTPUT})
     if (${NASM_VERSION} VERSION_LESS 2.14)
         message (FATAL_ERROR "nasm < 2.14 has a bug where include paths are ignored. Please install the latest version of nasm")
     endif ()
@@ -144,9 +144,8 @@ add_library (oglft STATIC
 target_include_directories (oglft
     PUBLIC "subprojects/OGLFT")
 target_link_libraries (oglft
-    PRIVATE
-        ${SDL2_LIBRARIES}
-        Freetype::Freetype)
+    PRIVATE SDL2::SDL2
+    PRIVATE Freetype::Freetype)
 
 add_library (mupen64plus-core SHARED
     "src/api/ai.c"
@@ -227,7 +226,6 @@ add_library (mupen64plus-core SHARED
 
 set_property (TARGET mupen64plus-core PROPERTY POSITION_INDEPENDENT_CODE ON)
 target_include_directories (mupen64plus-core
-    PRIVATE $<$<COMPILE_LANGUAGE:C>:${SDL2_INCLUDE_DIRS}>
     PRIVATE $<$<COMPILE_LANGUAGE:C>:${CMAKE_CURRENT_LIST_DIR}/src>
     PRIVATE $<$<COMPILE_LANGUAGE:ASM_NASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>
     PRIVATE $<$<COMPILE_LANGUAGE:ASM_MASM>:${CMAKE_CURRENT_LIST_DIR}/src/asm_defines>)
@@ -265,7 +263,7 @@ target_link_libraries (mupen64plus-core
     PRIVATE $<$<C_COMPILER_ID:GNU>:opcodes>
     PRIVATE $<$<C_COMPILER_ID:GNU>:bfd>
     PRIVATE PNG::PNG
-    PRIVATE ${SDL2_LIBRARIES}
+    PRIVATE SDL2::SDL2
     PRIVATE ZLIB::ZLIB
     PRIVATE $<$<BOOL:${M64P_OPENCV}>:${OpenCV_LIBRARIES}>
     PRIVATE $<$<BOOL:${M64P_OSD}>:Freetype::Freetype>

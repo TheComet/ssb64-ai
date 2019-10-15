@@ -6,7 +6,7 @@ set (GNU_CFLAGS -Wall -Wextra -Werror -Wno-unused-parameter -Wno-sign-compare -f
 
 cmake_host_system_information (RESULT IS_HOST_64BIT QUERY IS_64BIT)
 
-find_package (SDL2 REQUIRED)
+require_sdl2()
 find_package (SpeexDSP)
 find_package (Samplerate)
 
@@ -26,8 +26,7 @@ set_property (
     TARGET mupen64plus-audio-sdl
     PROPERTY POSITION_INDEPENDENT_CODE ${IS_HOST_64BIT})
 target_include_directories (mupen64plus-audio-sdl
-    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src
-    PRIVATE ${SDL2_INCLUDE_DIRS})
+    PRIVATE ${CMAKE_CURRENT_LIST_DIR}/src)
 target_compile_definitions (mupen64plus-audio-sdl
     PRIVATE $<$<BOOL:${SPEEXDSP_FOUND}>:USE_SPEEX>
     PRIVATE $<$<BOOL:${SAMPLERATE_FOUND}>:USE_SRC>)
@@ -40,10 +39,10 @@ set_target_properties (mupen64plus-audio-sdl PROPERTIES
     OUTPUT_NAME mupen64plus-audio-sdl
     LIBRARY_OUTPUT_DIRECTORY ${M64PAI_BINARY_PREFIX})
 target_link_libraries (mupen64plus-audio-sdl
-    PUBLIC mupen64plus-core-api
+    PRIVATE mupen64plus-core-api
     PRIVATE $<$<BOOL:${SPEEXDSP_FOUND}>:SpeexDSP::SpeexDSP>
     PRIVATE $<$<BOOL:${SAMPLERATE_FOUND}>:Samplerate::Samplerate>
-    PRIVATE ${SDL2_LIBRARIES})
+    PRIVATE SDL2::SDL2)
 
 if (WIN32)
     install (

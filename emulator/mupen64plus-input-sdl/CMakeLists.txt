@@ -4,7 +4,7 @@ project ("mupen64plus-input-sdl"
 
 set (GNU_CFLAGS -Wall -Wextra -Werror -Wno-sign-compare -Wno-unused-parameter -ffast-math -fno-strict-aliasing -fvisibility=hidden)
 
-find_package (SDL2 REQUIRED)
+require_sdl2()
 
 cmake_host_system_information (RESULT IS_HOST_64BIT QUERY IS_64BIT)
 
@@ -19,7 +19,6 @@ set_property (
     TARGET mupen64plus-input-sdl
     PROPERTY POSITION_INDEPENDENT_CODE ${IS_HOST_64BIT})
 target_include_directories (mupen64plus-input-sdl
-    PRIVATE $<$<COMPILE_LANGUAGE:C>:${SDL2_INCLUDE_DIRS}>
     PRIVATE $<$<COMPILE_LANGUAGE:C>:${CMAKE_CURRENT_LIST_DIR}/src>)
 target_compile_options (mupen64plus-input-sdl
     PRIVATE $<$<C_COMPILER_ID:GNU>:$<$<COMPILE_LANGUAGE:C>:${GNU_CFLAGS}>>
@@ -33,7 +32,7 @@ set_target_properties (mupen64plus-input-sdl PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY ${M64PAI_BINARY_PREFIX})
 target_link_libraries (mupen64plus-input-sdl
     PUBLIC mupen64plus-core-api
-    PRIVATE ${SDL2_LIBRARIES})
+    PRIVATE SDL2::SDL2)
 
 if (WIN32)
     install (
