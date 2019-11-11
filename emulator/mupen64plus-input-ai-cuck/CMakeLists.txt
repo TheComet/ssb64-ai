@@ -9,6 +9,7 @@ cmake_host_system_information (RESULT IS_HOST_64BIT QUERY IS_64BIT)
 add_library (mupen64plus-input-ai-cuck SHARED
     "src/plugin.c"
     $<$<PLATFORM_ID:Linux>:src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/osal_dynamiclib_win32.c>)
 set_property (
     TARGET mupen64plus-input-ai-cuck

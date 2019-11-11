@@ -14,6 +14,7 @@ add_library (mupen64plus-input-sdl SHARED
     "src/plugin.c"
     "src/sdl_key_converter.c"
     $<$<PLATFORM_ID:Linux>:src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/osal_dynamiclib_win32.c>)
 set_property (
     TARGET mupen64plus-input-sdl

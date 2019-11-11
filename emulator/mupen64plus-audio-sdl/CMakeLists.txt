@@ -18,6 +18,7 @@ add_library (mupen64plus-audio-sdl SHARED
     "src/resamplers/resamplers.c"
     "src/resamplers/trivial.c"
     $<$<PLATFORM_ID:Linux>:src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/osal_dynamiclib_win32.c>
     $<$<BOOL:${SPEEXDSP_FOUND}>:src/resamplers/speex.c>
     $<$<BOOL:${SAMPLERATE_FOUND}>:src/resamplers/src.c>)

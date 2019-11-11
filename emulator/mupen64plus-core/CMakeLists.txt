@@ -53,6 +53,8 @@ if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Windows")
     endif ()
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Darwin")
     set (ASSEMBLER_DIALECT ASM_NASM)
+    include_directories("/usr/local/opt/binutils/include")
+    link_directories("/usr/local/opt/binutils/lib")
 elseif (${CMAKE_HOST_SYSTEM_NAME} MATCHES "Linux")
     set (ASSEMBLER_DIALECT ASM_NASM)
 
@@ -80,7 +82,7 @@ if (${ASSEMBLER_DIALECT} MATCHES "ASM_NASM")
     endif ()
 endif ()
 
-set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden -flto)
+set (GNU_CFLAGS -Wall -ffast-math -fno-strict-aliasing -fvisibility=hidden -flto -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk)
 set (GNU_CXXFLAGS -fvisibility-inlines-hidden)
 
 # tweak flags for 32-bit build on 64-bit system
@@ -215,7 +217,9 @@ add_library (mupen64plus-core SHARED
     "src/plugin/dummy_input.c"
     "src/plugin/dummy_rsp.c"
     $<$<PLATFORM_ID:Linux>:src/osal/dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal/dynamiclib_unix.c>
     $<$<PLATFORM_ID:Linux>:src/osal/files_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal/files_unix.c>
     $<$<NOT:$<BOOL:${M64P_NO_ASM}>>:${DYNAREC_SOURCES}>
     $<$<BOOL:${M64P_DEBUGGER}>:src/debugger/dbg_debugger.c>
     $<$<BOOL:${M64P_DEBUGGER}>:src/debugger/dbg_decoder.c>

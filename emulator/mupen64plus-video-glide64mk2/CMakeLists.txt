@@ -79,6 +79,7 @@ add_library (mupen64plus-video-glide64mk2 SHARED
     $<$<NOT:$<BOOL:${M64P_TXCDXTN_EXT}>>:src/GlideHQ/tc-1.1+/s2tc/s2tc_algorithm.cpp>
     $<$<NOT:$<BOOL:${M64P_TXCDXTN_EXT}>>:src/GlideHQ/tc-1.1+/s2tc/s2tc_libtxc_dxtn.cpp>
     $<$<PLATFORM_ID:Linux>:src/Glide64/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/Glide64/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/Glide64/osal_dynamiclib_win32.c>)
 set_property (
     TARGET mupen64plus-video-glide64mk2

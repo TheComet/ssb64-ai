@@ -24,6 +24,7 @@ add_library (mupen64plus-rsp-hle SHARED
     "src/re2.c"
     "src/plugin.c"
     $<$<PLATFORM_ID:Linux>:src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/osal_dynamiclib_win32.c>)
 
 set_property (

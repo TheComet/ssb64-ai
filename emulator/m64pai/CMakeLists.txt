@@ -74,6 +74,7 @@ add_library (m64pai SHARED
     "src/m64pai_type_Stage_SaffronCity.c"
     "src/m64pai_type_Stage_MushroomKingdom.c"
     $<$<PLATFORM_ID:Linux>:src/osal_dynamiclib_unix.c>
+    $<$<PLATFORM_ID:Darwin>:src/osal_dynamiclib_unix.c>
     $<$<PLATFORM_ID:Windows>:src/osal_dynamiclib_win32.c>)
 target_include_directories (m64pai
     PRIVATE

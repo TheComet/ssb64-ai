@@ -45,10 +45,12 @@ endfunction ()
 function (require_sdl2)
     if (USE_SYSTEM_SDL2)
         find_package (SDL2)
-        add_library (SDL2::SDL2 INTERFACE IMPORTED GLOBAL)
-        set_target_properties (SDL2::SDL2 PROPERTIES 
-            INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIRS}
-            INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARIES})
+        if (${SDL2_FOUND})
+            add_library (SDL2::SDL2 INTERFACE IMPORTED GLOBAL)
+            set_target_properties (SDL2::SDL2 PROPERTIES 
+                INTERFACE_INCLUDE_DIRECTORIES ${SDL2_INCLUDE_DIRS}
+                INTERFACE_LINK_LIBRARIES ${SDL2_LIBRARIES})
+        endif ()
     endif ()
     if (NOT TARGET SDL2::SDL2)
         add_subdirectory (${SDL2_SOURCE} ${SDL2_BINARY})
